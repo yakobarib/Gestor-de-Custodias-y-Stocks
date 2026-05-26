@@ -1601,9 +1601,9 @@ function Historial({ data }) {
             </div>
           </div>
           {/* Col 5: unidades */}
-          <div style={{ textAlign: "right" }}>
-            <div className="history-uds" style={{ fontSize: 16, color: m.tipo === "CUSTODIA" ? "var(--green)" : "var(--accent)" }}>{m.uds}</div>
-            <div className="history-uds-label">uds.</div>
+          <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+            <span style={{ fontFamily:"var(--mono,monospace)", fontSize:15, fontWeight:700, color: m.tipo === "CUSTODIA" ? "var(--green)" : "var(--accent)" }}>{m.uds}</span>
+            <span style={{ fontFamily:"var(--mono,monospace)", fontSize:11, color:"var(--text-dim)", marginLeft:4 }}>Uds.</span>
           </div>
           {/* Col 6: acciones */}
           <div className="history-actions">
@@ -2343,7 +2343,7 @@ function TabProductos({ data, onBulkUpdateRef }) {
       const q = search.toLowerCase();
       return p.referencia.toLowerCase().includes(q) || p.producto.toLowerCase().includes(q);
     })
-    .sort((a, b) => b.totalPend - a.totalPend);
+    .sort((a, b) => a.referencia.localeCompare(b.referencia));
 
   const totalGeneral = productos.reduce((s,p)=>s+p.totalPend, 0);
 
