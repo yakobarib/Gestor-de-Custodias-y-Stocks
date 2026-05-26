@@ -1,0 +1,2662 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gestor de Stock en Custodia · Recambios Ibiza</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@700;800;900&family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+
+  :root {
+    --bg: #0e0f11; --surface: #16181c; --surface2: #1e2128; --border: #2a2d35;
+    --accent: #E20613; --accent-dim: rgba(226,6,19,0.12); --accent-glow: rgba(226,6,19,0.3);
+    --blue2: #002D5A; --green: #4caf7d; --blue: #5b8def;
+    --text: #e8eaf0; --text-dim: #7a7f8e; --text-faint: #454952;
+  }
+
+  [data-theme="light"] {
+    --bg: #F4F4F4; --surface: #FFFFFF; --surface2: #F4F4F4; --border: #D8D8D8;
+    --accent: #E20613; --accent-dim: rgba(226,6,19,0.08); --accent-glow: rgba(226,6,19,0.25);
+    --blue2: #002D5A; --green: #2e7d32; --blue: #002D5A;
+    --text: #002D5A; --text-dim: #4a5568; --text-faint: #a0aec0;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; min-height: 100vh; transition: background 0.2s, color 0.2s; }
+  .app { display: flex; flex-direction: column; min-height: 100vh; }
+  .header { display: flex; align-items: center; justify-content: space-between; padding: 0 28px; height: 60px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-text { font-family: 'Inter', sans-serif; font-weight: 800; font-size: 16px; letter-spacing: -0.5px; color: var(--text); }
+  .logo-sub { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); margin-top: -2px; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .header-save { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 5px 12px; }
+  .header-save.saved { color: var(--green); border-color: rgba(46,125,50,0.4); background: rgba(46,125,50,0.07); }
+  .theme-toggle { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 3px; gap: 2px; }
+  .theme-opt { padding: 5px 14px; border-radius: 6px; border: none; cursor: pointer; font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; transition: all 0.2s; background: transparent; color: var(--text-dim); white-space: nowrap; }
+  .theme-opt.active { background: #002D5A; color: #fff; box-shadow: 0 2px 8px rgba(0,45,90,0.4); }
+  .theme-opt:not(.active):hover { color: var(--text); }
+  @keyframes blink-red { 0%,100% { color: #E20613; } 50% { color: rgba(226,6,19,0.25); } }
+  .kpi-value.debt-alert { animation: blink-red 1.2s ease-in-out infinite; font-weight: 900; }
+  .krafted { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-faint); margin-top: 20px; }
+  .krafted span { color: #a8e63d; font-weight: 700; }
+  [data-theme="light"] .krafted span { color: #002D5A; }
+  /* ── Layout sticky ── */
+  html, body { height: 100%; }
+  .app { height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+  .main { flex: 1; overflow: hidden; display: flex; flex-direction: column; padding: 0; max-width: 100%; }
+  .main-inner { max-width: 1400px; width: 100%; margin: 0 auto; flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  .dash-top { padding: 20px 28px 0; flex-shrink: 0; background: var(--bg); }
+  .dash-body { flex: 1; overflow-y: auto; padding: 0 28px 28px; }
+  .tab-scroll { flex: 1; overflow-y: auto; padding: 28px; }
+  .btn-green { background: #1a7f4b; color: #fff; }
+  .btn-green:hover { background: #1d9458; }
+  .nav { display: flex; gap: 4px; padding: 0 28px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .nav-btn { padding: 12px 18px; border: none; background: none; cursor: pointer; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 13px; color: var(--text); border-bottom: 2px solid transparent; transition: all 0.15s; display: flex; align-items: center; gap: 7px; }
+  .nav-btn:hover { color: var(--text); }
+  .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .badge { background: var(--accent); color: #fff; border-radius: 10px; padding: 1px 6px; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; }
+  .badge-warn { background: #E20613; }
+  .main { flex: 1; padding: 28px; max-width: 1400px; width: 100%; margin: 0 auto; }
+  .kpis { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 24px; }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; transition: box-shadow 0.2s; }
+  .kpi:hover { box-shadow: 0 4px 16px rgba(226,6,19,0.1); }
+  .kpi-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .kpi-value { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 700; }
+  .kpi-value.accent { color: var(--accent); }
+  .kpi-value.green { color: var(--green); }
+  .kpi-sub { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .section-title { font-size: 16px; font-weight: 700; color: var(--text); }
+  .section-sub { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .search-bar { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+  .search-input { flex: 1; min-width: 180px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text); outline: none; transition: border-color 0.15s; }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--text-faint); }
+  .filter-select { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text); outline: none; cursor: pointer; }
+  .filter-select option { background: var(--surface); }
+  .table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  th { background: var(--surface2); padding: 10px 14px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim); border-bottom: 1px solid var(--border); white-space: nowrap; position: sticky; top: 0; z-index: 5; }
+  td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+  .stock-bar-wrap { width: 80px; }
+  .stock-bar-track { background: var(--border); border-radius: 3px; height: 5px; overflow: hidden; }
+  .stock-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+  .stock-pct { font-size: 10px; color: var(--text-dim); margin-top: 3px; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; }
+  .tag-accent { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent-glow); }
+  .tag-green { background: rgba(46,125,50,0.1); color: var(--green); }
+  .tag-blue { background: rgba(0,45,90,0.1); color: var(--blue2); }
+  .tag-red { background: rgba(226,6,19,0.12); color: #E20613; }
+  .tag-orange { background: rgba(255,140,0,0.12); color: #ff8c00; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 8px; border: none; cursor: pointer; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; transition: all 0.15s; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { filter: brightness(1.1); }
+  .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger { background: rgba(226,6,19,0.1); color: #E20613; border: 1px solid rgba(226,6,19,0.2); }
+  .btn-danger:hover { background: rgba(226,6,19,0.2); }
+  .btn-sm { padding: 5px 10px; font-size: 11px; border-radius: 5px; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; width: 100%; max-width: 620px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto; }
+  .modal-title { font-size: 18px; font-weight: 800; margin-bottom: 6px; color: var(--text); }
+  .modal-sub { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); margin-bottom: 20px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim); }
+  input, select, textarea { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text); outline: none; transition: border-color 0.15s; width: 100%; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  input:not([type=date]):not([type=number]), textarea { text-transform: uppercase; }
+  input::placeholder, textarea::placeholder { color: var(--text-faint); }
+  select option { background: var(--surface); }
+  textarea { resize: vertical; min-height: 70px; }
+  .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+  .alert { border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .alert-warn { background: var(--accent-dim); border: 1px solid var(--accent-glow); color: var(--accent); }
+  .alert-info { background: rgba(0,45,90,0.07); border: 1px solid rgba(0,45,90,0.2); color: var(--blue2); }
+  .history-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin-bottom: 6px; display: grid; grid-template-columns: 90px 110px 90px 1fr 56px 72px; gap: 8px; align-items: center; transition: box-shadow 0.15s; }
+  .history-item:hover { box-shadow: 0 2px 16px rgba(226,6,19,0.15); transform: translateY(-1px); }
+  .history-actions { display: flex; gap: 4px; align-items: center; justify-content: flex-end; }
+  .history-date { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+  .history-client { font-weight: 700; font-size: 13px; color: var(--text); }
+  .history-product { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .history-uds { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; color: var(--accent); text-align: right; }
+  .history-uds-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); }
+  .empty { text-align: center; padding: 60px 20px; }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.3; }
+  .empty-title { font-size: 16px; font-weight: 700; color: var(--text-dim); margin-bottom: 6px; }
+  .empty-sub { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-faint); }
+  .loader { display: flex; align-items: center; justify-content: center; min-height: 300px; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text-dim); gap: 10px; }
+  .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .pdf-drop { border: 2px dashed var(--border); border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-dim); margin-bottom: 16px; }
+  .pdf-drop:hover, .pdf-drop.dragging { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .pdf-drop.loading { border-color: var(--accent); animation: pulse 1.5s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+  .debt-alert { background: rgba(226,6,19,0.08); border: 1px solid rgba(226,6,19,0.3); border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #E20613; margin-bottom: 8px; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+  @media (max-width: 768px) { .kpis { grid-template-columns: 1fr 1fr; } .form-grid { grid-template-columns: 1fr; } .main { padding: 16px; } .form-group.full { grid-column: auto; } }
+
+  /* ── Mobile ── */
+  @media (max-width: 640px) {
+    .header { padding: 0 10px; height: 48px; }
+    .logo { gap: 7px; }
+    .logo svg { width: 26px !important; height: auto !important; }
+    .logo-text { font-size: 13px; white-space: nowrap; }
+    .logo-sub { display: none; }
+    .header-save { display: none; }
+    .theme-toggle { padding: 2px; }
+    .theme-opt { padding: 4px 9px; font-size: 11px; }
+    .nav { padding: 0 6px; overflow-x: auto; }
+    .nav-btn { padding: 9px 10px; font-size: 12px; white-space: nowrap; }
+    .dash-top { padding: 12px 12px 0; }
+    .dash-body { padding: 0 12px 16px; }
+    .tab-scroll { padding: 12px; }
+    .kpis { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .kpi { padding: 12px 12px; }
+    .kpi-value { font-size: 22px; }
+    .kpi-label { font-size: 9px; }
+    .section-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .section-header > div:last-child { display: flex; gap: 6px; width: 100%; }
+    .section-header .btn { flex: 1; justify-content: center; font-size: 11px; padding: 8px 6px; }
+    .search-bar { gap: 6px; }
+    .search-input { min-width: 0; font-size: 12px; padding: 8px 10px; }
+    .filter-select { font-size: 12px; padding: 8px 8px; width: 100%; }
+    table { font-size: 11px; }
+    th, td { padding: 6px 7px; }
+    .modal { padding: 16px; max-width: 100%; margin: 0; border-radius: 8px; }
+    .modal-title { font-size: 15px; }
+    .form-grid { grid-template-columns: 1fr; }
+    .form-group.full { grid-column: auto; }
+    .btn { font-size: 12px; padding: 8px 12px; }
+  }
+
+  .ayuda-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:300; display:flex; align-items:flex-start; justify-content:flex-end; }
+  .ayuda-panel { background:var(--surface); border-left:1px solid var(--border); width:min(520px,100vw); height:100vh; overflow-y:auto; display:flex; flex-direction:column; box-shadow:-8px 0 32px rgba(0,0,0,0.3); }
+  .ayuda-header { padding:20px 24px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
+  .ayuda-tabs { display:flex; border-bottom:1px solid var(--border); flex-shrink:0; }
+  .ayuda-tab { flex:1; padding:10px; border:none; background:none; cursor:pointer; font-family:'Syne',sans-serif; font-weight:600; font-size:12px; color:var(--text-dim); border-bottom:2px solid transparent; transition:all 0.15s; }
+  .ayuda-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .ayuda-body { padding:20px 24px; flex:1; }
+  .ayuda-section { margin-bottom:20px; }
+  .ayuda-section h3 { font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--accent); margin-bottom:8px; font-family:'JetBrains Mono',monospace; }
+  .ayuda-section p, .ayuda-section li { font-size:12px; color:var(--text-dim); line-height:1.7; }
+  .ayuda-section ul { padding-left:16px; }
+  .version-card { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:10px; }
+  .version-num { font-family:'JetBrains Mono',monospace; font-weight:700; font-size:13px; color:var(--accent); }
+  .version-date { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-faint); margin-left:8px; }
+  .version-li { font-size:11px; color:var(--text-dim); padding:2px 0; }
+  .about-logo { text-align:center; padding:20px 0; }
+  .about-version { font-family:'JetBrains Mono',monospace; font-size:28px; font-weight:700; color:var(--accent); }
+  .about-line { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-dim); margin-top:4px; }
+  .about-kraft { font-family:'JetBrains Mono',monospace; font-size:12px; margin-top:20px; color:var(--text-faint); }
+  .about-kraft span { color:#a8e63d; font-weight:700; }
+  [data-theme='light'] .about-kraft span.blue { color:#002D5A; }
+
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel" data-presets="react">
+    const { useState, useEffect, useCallback, useRef } = React;
+
+
+
+// ─── NUMERACIÓN AUTOMÁTICA DE ENTREGAS ───────────────────────────────────────
+function formatNumE(n) { return String(n).padStart(6, "0"); }
+
+function getNextNumEntrega(entregas) {
+  const nums = entregas
+    .map(e => parseInt(e.numEntrega || "0", 10))
+    .filter(n => !isNaN(n) && n > 0);
+  return nums.length > 0 ? Math.max(...nums) + 1 : 1;
+}
+
+// Asigna numEntrega a todas las entregas que no lo tengan (orden cronológico)
+// Devuelve {entregas, changed}
+function asignarNumerosEntrega(entregas) {
+  const existingNums = new Set(
+    entregas.filter(e => e.numEntrega).map(e => parseInt(e.numEntrega, 10))
+  );
+  const sinNumero = [...entregas]
+    .filter(e => !e.numEntrega)
+    .sort((a, b) => (a.fecha || "").localeCompare(b.fecha || ""));
+
+  if (sinNumero.length === 0) return { entregas, changed: false };
+
+  let counter = existingNums.size > 0 ? Math.max(...existingNums) + 1 : 1;
+  const mapa = {};
+  sinNumero.forEach(e => {
+    mapa[e.id] = formatNumE(counter++);
+  });
+
+  const result = entregas.map(e => e.numEntrega ? e : { ...e, numEntrega: mapa[e.id] || formatNumE(counter++) });
+  return { entregas: result, changed: true };
+}
+
+// ─── STORAGE HELPERS ────────────────────────────────────────────────────────
+const STORAGE_KEY = "recambios-ibiza-custodia-v2";
+
+const SUPABASE_URL = "https://szoatrosdwrvcowdrtwb.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6b2F0cm9zZHdydmNvd2RydHdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwOTc1MDksImV4cCI6MjA5NDY3MzUwOX0.fkP-9NFv55tlUSrh2-_MwPXiMDS4RwVuq6SP9yYojCo";
+const SB_HEADERS = {
+  "Content-Type": "application/json",
+  "apikey": SUPABASE_KEY,
+  "Authorization": "Bearer " + SUPABASE_KEY,
+  "Prefer": "return=minimal"
+};
+
+// ─── Timestamp del último dato cargado/guardado ────────────────────────────
+// Permite que el polling detecte cambios de OTROS usuarios sin sobreescribir
+// los cambios del usuario actual.
+let _lastUpdatedAt = null;
+let _isSaving = false;
+
+async function loadData() {
+  try {
+    const res = await fetch(
+      SUPABASE_URL + "/rest/v1/app_state?id=eq.main&select=data,updated_at",
+      { headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY } }
+    );
+    if (res.ok) {
+      const rows = await res.json();
+      if (rows.length > 0 && rows[0].data) {
+        _lastUpdatedAt = rows[0].updated_at;
+        const parsed = rows[0].data;
+        if (!parsed.custodias) parsed.custodias = [];
+        if (!parsed.entregas)  parsed.entregas  = [];
+        if (!parsed.prestamos) parsed.prestamos = [];
+        // Asignar numEntrega a entregas históricas si no lo tienen
+        const { entregas: eNumeradas, changed } = asignarNumerosEntrega(parsed.entregas);
+        if (changed) {
+          parsed.entregas = eNumeradas;
+          saveData(parsed); // guardar en Supabase sin bloquear
+        }
+        return parsed;
+      }
+    }
+  } catch (e) { console.error("Error cargando datos:", e); }
+  return { custodias: [], entregas: [], prestamos: [] };
+}
+
+async function saveData(data) {
+  _isSaving = true;
+  try {
+    const res = await fetch(SUPABASE_URL + "/rest/v1/app_state?id=eq.main", {
+      method: "PATCH",
+      headers: { ...SB_HEADERS, "Prefer": "return=representation" },
+      body: JSON.stringify({ data: data, updated_at: new Date().toISOString() })
+    });
+    if (res.ok) {
+      const rows = await res.json();
+      // Actualizar el timestamp con el que devuelve el servidor
+      if (rows && rows.length > 0 && rows[0].updated_at) {
+        _lastUpdatedAt = rows[0].updated_at;
+      }
+    }
+  } catch (e) { console.error("Error guardando:", e); }
+  _isSaving = false;
+}
+
+// Polling inteligente: solo actualiza si el dato cambió en el servidor
+// (por otro usuario) y no hay un guardado en curso
+async function pollRemote(setData) {
+  if (_isSaving) return;
+  try {
+    const res = await fetch(
+      SUPABASE_URL + "/rest/v1/app_state?id=eq.main&select=data,updated_at",
+      { headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY } }
+    );
+    if (!res.ok) return;
+    const rows = await res.json();
+    if (!rows.length) return;
+    const remoteTs = rows[0].updated_at;
+    if (remoteTs !== _lastUpdatedAt) {
+      // Dato más reciente de otro usuario → actualizar
+      _lastUpdatedAt = remoteTs;
+      const parsed = rows[0].data;
+      if (!parsed.prestamos) parsed.prestamos = [];
+      setData(parsed);
+    }
+  } catch (_) { /* ignorar errores de red en polling */ }
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+function fmt(dateStr) {
+  if (!dateStr || dateStr === "CONTINUACION" || dateStr === "FERIA") return "—";
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
+  } catch { return dateStr; }
+}
+
+function fmtNow() {
+  return new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+// ─── AD PARTS LOGO SVG ───────────────────────────────────────────────────────
+function LogoAD({ size = 36, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size * 0.674} viewBox="0 0 670 452" xmlns="http://www.w3.org/2000/svg" fill={color}>
+      <g transform="translate(0,452) scale(0.1,-0.1)">
+        <path d="M2 2263 l3 -2258 3348 -3 3347 -2 0 2260 0 2260 -3350 0 -3350 0 2 -2257z m5314 1797 c7 -19 50 -138 95 -265 243 -684 539 -1512 644 -1805 57 -157 117 -325 135 -375 64 -180 182 -511 200 -560 86 -236 117 -334 109 -337 -5 -2 -152 -2 -328 0 l-319 3 -47 132 c-26 72 -51 137 -57 142 -6 7 -18 0 -35 -20 -218 -257 -474 -403 -808 -462 -119 -20 -355 -13 -470 16 -105 26 -213 65 -300 109 -68 34 -177 103 -203 129 -7 7 -17 13 -22 13 -11 0 -210 199 -210 210 0 5 -6 15 -13 22 -58 59 -145 220 -197 368 -94 265 -99 559 -14 831 23 75 102 251 136 304 138 215 327 385 543 491 251 122 509 157 799 108 46 -8 48 -26 -22 171 -80 225 -280 778 -287 798 -7 16 11 17 325 15 l332 -3 14 -35z m-978 -22 c49 -134 201 -561 204 -576 2 -10 -174 -12 -882 -12 l-885 0 -67 182 c-93 252 -149 409 -155 436 l-5 22 885 0 886 0 19 -52z m-2492 -942 c194 -48 350 -124 508 -246 52 -40 154 -142 200 -200 133 -166 174 -250 316 -640 21 -58 91 -247 155 -420 64 -173 138 -376 165 -450 27 -74 73 -202 103 -283 37 -100 51 -150 43 -153 -6 -2 -154 -3 -329 -2 l-319 3 -30 80 c-63 168 -71 190 -78 198 -3 4 -35 -25 -71 -64 -276 -306 -702 -466 -1100 -416 -157 21 -275 54 -405 116 -380 181 -647 527 -731 949 -24 120 -23 375 1 491 22 105 58 216 97 299 16 35 29 65 29 68 0 10 115 182 153 229 189 234 485 406 797 461 122 22 371 12 496 -20z"/>
+        <path d="M4632 2479 c-248 -37 -458 -219 -539 -466 -37 -110 -38 -275 -5 -383 39 -122 89 -207 172 -290 128 -128 256 -187 431 -197 225 -13 432 87 571 275 207 280 157 686 -111 909 -148 122 -341 179 -519 152z"/>
+        <path d="M1425 2474 c-111 -23 -246 -94 -321 -170 -83 -82 -146 -181 -181 -280 -24 -70 -27 -94 -28 -209 0 -112 3 -140 24 -200 46 -136 99 -215 206 -313 116 -104 238 -153 400 -159 204 -9 342 44 486 187 138 136 196 264 206 450 5 87 2 120 -16 190 -68 272 -278 465 -552 509 -83 14 -138 13 -224 -5z"/>
+      </g>
+    </svg>
+  );
+}
+
+// ─── PRINT DELIVERY DOCUMENT ─────────────────────────────────────────────────
+function printDeliveryDoc(custodia, entrega, allCustodias) {
+  const stockCliente = allCustodias.filter(c => c.cliente === custodia.cliente);
+  const date = fmtNow();
+  const numE = entrega.numEntrega ? `#${entrega.numEntrega}` : "";
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>Albarán Entrega Custodia</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:Arial,sans-serif; font-size:12px; color:#002D5A; }
+  /* ── PÁGINA 1: PORTADA (cara serigrafiada) ── */
+  .page-front {
+    width:100%; height:100vh;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    text-align:center; padding:40px;
+    page-break-after: always;
+  }
+  .front-tipo { font-size:11px; letter-spacing:3px; text-transform:uppercase; color:#E20613; margin-bottom:16px; }
+  .front-title { font-size:38px; font-weight:900; color:#002D5A; line-height:1.1; margin-bottom:20px; }
+  .front-num { font-size:22px; font-weight:700; color:#E20613; margin-bottom:30px; font-family:monospace; }
+  .front-cliente { font-size:20px; font-weight:700; color:#002D5A; margin-bottom:8px; }
+  .front-fecha { font-size:14px; color:#666; margin-bottom:40px; }
+  .front-divider { width:80px; height:3px; background:#E20613; margin:0 auto 40px; }
+  .front-dorso { font-size:16px; font-weight:700; color:#002D5A; letter-spacing:2px; margin-bottom:8px; border:2px solid #002D5A; padding:10px 24px; display:inline-block; }
+  .front-copia { font-size:11px; color:#999; margin-top:16px; letter-spacing:1px; }
+  /* ── PÁGINA 2: DETALLE (cara en blanco) ── */
+  .page-back { padding:20px; }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #E20613; padding-bottom:12px; margin-bottom:20px; }
+  .company { font-size:18px; font-weight:bold; color:#002D5A; }
+  .company-sub { font-size:10px; color:#666; margin-top:2px; }
+  .doc-title { text-align:right; }
+  .doc-title h2 { font-size:15px; color:#E20613; font-weight:bold; }
+  .doc-num { font-size:11px; color:#666; }
+  .section { margin-bottom:16px; }
+  .section-title { font-size:11px; text-transform:uppercase; letter-spacing:1px; color:#E20613; font-weight:bold; border-bottom:1px solid #eee; padding-bottom:4px; margin-bottom:10px; }
+  .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .info-row { display:flex; gap:8px; font-size:11px; }
+  .info-label { font-weight:bold; color:#002D5A; min-width:110px; }
+  .delivery-box { background:#F4F4F4; border:2px solid #E20613; border-radius:4px; padding:10px; margin-bottom:16px; }
+  .delivery-product { font-size:14px; font-weight:bold; color:#002D5A; }
+  .delivery-uds { font-size:26px; font-weight:bold; color:#E20613; margin-top:4px; }
+  table { width:100%; border-collapse:collapse; font-size:10px; }
+  th { background:#002D5A; color:white; padding:5px 7px; text-align:left; }
+  td { padding:4px 7px; border-bottom:1px solid #eee; }
+  tr:nth-child(even) td { background:#f9f9f9; }
+  .pendiente { font-weight:bold; color:#1a7f4b; }
+  .agotado { color:#999; }
+  .firma-grid { display:grid; grid-template-columns:1fr 1fr; gap:40px; margin-top:24px; }
+  .firma-box { border-top:1px solid #002D5A; padding-top:6px; text-align:center; font-size:10px; color:#666; }
+  .footer { margin-top:20px; border-top:1px solid #ddd; padding-top:10px; font-size:9px; color:#999; text-align:center; }
+  @media print {
+    @page { size: A4; margin: 15mm; }
+    .page-front { margin:0; padding:30px; }
+  }
+</style></head><body>
+
+<!-- PÁGINA 1: PORTADA -->
+<div class="page-front">
+  <div class="front-tipo">Recambios Ibiza S.A. · AD Parts Distribución</div>
+  <div class="front-title">ALBARÁN DE<br>ENTREGA DE STOCK</div>
+  ${numE ? `<div class="front-num">${numE}</div>` : ''}
+  <div class="front-divider"></div>
+  <div class="front-cliente">${custodia.cliente}</div>
+  <div class="front-fecha">${date}</div>
+  <div class="front-dorso">↩ INSTRUCCIONES AL DORSO</div>
+  <div class="front-copia">Dejar esta copia al cliente</div>
+</div>
+
+<!-- PÁGINA 2: DETALLE -->
+<div class="page-back">
+<div class="header">
+  <div>
+    <div class="company">RECAMBIOS IBIZA S.A.</div>
+    <div class="company-sub">AD PARTS DISTRIBUIDOR OFICIAL</div>
+  </div>
+  <div class="doc-title">
+    <h2>NOTA DE ENTREGA EN CUSTODIA ${numE}</h2>
+    <div class="doc-num">Fecha: ${date}</div>
+    ${entrega.albaran ? `<div class="doc-num">Albarán Skrit: ${entrega.albaran}</div>` : ''}
+  </div>
+</div>
+<div class="section">
+  <div class="section-title">Datos del cliente</div>
+  <div class="info-grid">
+    <div class="info-row"><span class="info-label">Cliente:</span>${custodia.cliente}</div>
+    <div class="info-row"><span class="info-label">Almacén:</span>${custodia.almacen}</div>
+    <div class="info-row"><span class="info-label">Albarán compra:</span>${custodia.albaran || '—'}</div>
+    ${entrega.operario ? `<div class="info-row"><span class="info-label">Entregado por:</span>${entrega.operario}</div>` : ''}
+  </div>
+</div>
+<div class="delivery-box">
+  <div class="section-title" style="border-bottom:none;margin-bottom:4px;">Material entregado</div>
+  <div class="delivery-product">${custodia.referencia} · ${custodia.producto}</div>
+  <div class="delivery-uds">${entrega.uds} <span style="font-size:13px;color:#002D5A;">unidades</span></div>
+  ${entrega.notas ? `<div style="margin-top:6px;font-size:11px;color:#666;">Nota: ${entrega.notas}</div>` : ''}
+</div>
+<div class="section">
+  <div class="section-title">Stock restante de ${custodia.cliente} a día de hoy</div>
+  <table>
+    <thead><tr><th>Referencia</th><th>Producto</th><th>Almacén</th><th style="text-align:right">Compradas</th><th style="text-align:right">Entregadas</th><th style="text-align:right">Pendientes</th></tr></thead>
+    <tbody>
+      ${stockCliente.map(c => {
+        const pend = c.udsTotales - c.udsEntregadas;
+        const isCurrent = c.id === custodia.id;
+        const entregadasMostrar = isCurrent ? c.udsEntregadas + entrega.uds : c.udsEntregadas;
+        const pendMostrar = isCurrent ? Math.max(0, pend - entrega.uds) : pend;
+        return `<tr${isCurrent ? ' style="background:#f0fff4;"' : ''}>
+          <td>${c.referencia}</td><td>${c.producto}</td><td>${c.almacen}</td>
+          <td style="text-align:right">${c.udsTotales}</td>
+          <td style="text-align:right">${entregadasMostrar}</td>
+          <td style="text-align:right" class="${pendMostrar<=0?'agotado':'pendiente'}">${pendMostrar}</td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>
+</div>
+<div class="firma-grid">
+  <div class="firma-box">Firma cliente<br><br><br></div>
+  <div class="firma-box">Firma operario<br><br><br></div>
+</div>
+<div class="footer">Recambios Ibiza S.A. · AD Parts Distribución · Nº Entrega ${numE} · ${date}</div>
+</div>
+</body></html>`;
+
+  const win = window.open('', '_blank', 'width=820,height=950');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => win.print(), 500);
+}
+
+// ─── STOCK BAR ───────────────────────────────────────────────────────────────
+function StockBar({ entregadas, totales }) {
+  const pct = totales > 0 ? Math.min(100, Math.round((entregadas / totales) * 100)) : 0;
+  const pendientes = totales - entregadas;
+  const color = pendientes <= 0 ? "#4caf7d" : pct >= 70 ? "#E20613" : "#002D5A";
+  return (
+    <div className="stock-bar-wrap">
+      <div className="stock-bar-track">
+        <div className="stock-bar-fill" style={{ width: `${pct}%`, background: color }} />
+      </div>
+      <div className="stock-pct">{pendientes} restantes</div>
+    </div>
+  );
+}
+
+function StatusTag({ entregadas, totales }) {
+  const pendientes = totales - entregadas;
+  if (pendientes <= 0) return <span className="tag tag-green">COMPLETO</span>;
+  if (pendientes <= totales * 0.15) return <span className="tag tag-accent">CASI AGOTADO</span>;
+  return <span className="tag tag-blue">EN CUSTODIA</span>;
+}
+
+// ─── PDF READER via Claude API ────────────────────────────────────────────────
+async function extractAlbaranFromPDF(file) {
+  throw new Error("La extracción automática por IA no está disponible en la versión standalone. Rellena el formulario manualmente.");
+}
+
+// ─── MODAL NUEVA CUSTODIA ─────────────────────────────────────────────────────
+function ModalNuevaCustodia({ onClose, onSave, clientes, custodias = [] }) {
+  // Catálogo de referencias → producto construido desde custodias existentes
+  const refCatalog = {};
+  custodias.forEach(c => { if (c.referencia && c.producto) refCatalog[c.referencia.trim().toUpperCase()] = c.producto; });
+  const refList = Object.keys(refCatalog).sort();
+
+  const [form, setForm] = useState({
+    cliente: "", albaran: "", facturaLibre: "", operarioCustodia: "",
+    fecha: new Date().toISOString().split("T")[0],
+    referencia: "", producto: "", almacen: "CENTRAL", udsTotales: "", notas: ""
+  });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: typeof v === "string" ? v.toUpperCase() : v }));
+
+  const handleSave = () => {
+    if (!form.cliente || !form.referencia || !form.udsTotales) {
+      alert("Rellena al menos: Cliente, Referencia y Unidades totales"); return;
+    }
+    if (!form.operarioCustodia.trim()) {
+      alert("⚠️ Obligatorio rellenar quién hace la custodia"); return;
+    }
+    onSave({ ...form, udsTotales: Number(form.udsTotales), id: uid(), udsEntregadas: 0 });
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-title">📦 Nueva Custodia</div>
+        <div className="modal-sub">Registra un nuevo lote de stock en custodia para un cliente</div>
+
+        <div className="pdf-drop" style={{ cursor: "default", opacity: 0.5 }}>
+          📄 Extracción automática desde PDF · Solo disponible en la versión Claude.ai
+        </div>
+
+        <div className="form-grid">
+          <div className="form-group">
+            <label>Cliente *</label>
+            <input list="cl-list" value={form.cliente} onChange={e => set("cliente", e.target.value)} placeholder="Nombre del cliente" />
+            <datalist id="cl-list">{clientes.map(c => <option key={c} value={c} />)}</datalist>
+          </div>
+          <div className="form-group">
+            <label>Fecha de compra</label>
+            <input type="date" value={form.fecha} onChange={e => set("fecha", e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Nº Albarán / Factura Libre</label>
+            <input value={form.albaran} onChange={e => set("albaran", e.target.value)} placeholder="Ej: 177931" />
+          </div>
+          <div className="form-group">
+            <label>Responsable / Operario *</label>
+            <input value={form.operarioCustodia} onChange={e => set("operarioCustodia", e.target.value)} placeholder="Nombre de quien registra la custodia" style={{ borderColor: !form.operarioCustodia ? "var(--accent)" : "var(--border)" }} />
+          </div>
+          <div className="form-group">
+            <label>Referencia *</label>
+            <input
+              list="ref-catalog-list"
+              value={form.referencia}
+              onChange={e => {
+                const val = e.target.value;
+                set("referencia", val);
+                if (refCatalog[val.trim().toUpperCase()]) set("producto", refCatalog[val.trim().toUpperCase()]);
+              }}
+              placeholder="Ej: ADP35005"
+            />
+            <datalist id="ref-catalog-list">
+              {refList.map(r => <option key={r} value={r}>{refCatalog[r]}</option>)}
+            </datalist>
+          </div>
+          <div className="form-group">
+            <label>Unidades totales *</label>
+            <input type="number" min="1" value={form.udsTotales} onChange={e => set("udsTotales", e.target.value)} placeholder="0" />
+          </div>
+          <div className="form-group full">
+            <label>Descripción del producto</label>
+            <input value={form.producto} onChange={e => set("producto", e.target.value)} placeholder="Ej: MDX+ 5W40 5L" />
+          </div>
+          <div className="form-group">
+            <label>Almacén</label>
+            <select value={form.almacen} onChange={e => set("almacen", e.target.value)}>
+              <option>CENTRAL</option><option>MONTECRISTO</option><option>EXTERNO</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Notas</label>
+            <input value={form.notas} onChange={e => set("notas", e.target.value)} placeholder="Observaciones..." />
+          </div>
+        </div>
+        <div className="form-actions">
+          <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+          <button className="btn btn-primary" onClick={handleSave}>✓ Guardar custodia</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── MODAL REGISTRAR ENTREGA ──────────────────────────────────────────────────
+function ModalEntrega({ custodia, onClose, onSave, allCustodias }) {
+  const pendientes = custodia.udsTotales - custodia.udsEntregadas;
+  const [form, setForm] = useState({ uds: "", albaran: "", operario: "", notas: "", fecha: new Date().toISOString().split("T")[0] });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: typeof v === "string" ? v.toUpperCase() : v }));
+
+  const handleSave = () => {
+    const uds = Number(form.uds);
+    if (!uds || uds <= 0) { alert("Introduce las unidades a entregar"); return; }
+    if (uds > pendientes) { alert(`Solo quedan ${pendientes} unidades disponibles`); return; }
+    if (!form.operario.trim()) { alert("⚠️ Obligatorio rellenar quién hace la entrega"); return; }
+    const entregaData = { ...form, uds, id: uid(), custodiaId: custodia.id };
+    onSave(entregaData);
+    printDeliveryDoc(custodia, entregaData, allCustodias);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-title">🚚 Registrar Entrega</div>
+        <div className="modal-sub">Albarán a coste cero · descuenta del saldo de la custodia</div>
+        <div className="alert alert-warn" style={{ marginBottom: 20 }}>
+          Cliente: <strong>{custodia.cliente}</strong> · {custodia.referencia} · {custodia.producto}<br />
+          Disponibles: <strong>{pendientes} ud.</strong> de {custodia.udsTotales} · Almacén: {custodia.almacen}
+        </div>
+        <div className="form-grid">
+          <div className="form-group">
+            <label>Fecha de entrega</label>
+            <input type="date" value={form.fecha} onChange={e => set("fecha", e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Unidades a entregar *</label>
+            <input type="number" min="1" max={pendientes} value={form.uds} onChange={e => set("uds", e.target.value)} placeholder="0" autoFocus />
+          </div>
+          <div className="form-group">
+            <label>Nº Albarán de salida</label>
+            <input value={form.albaran} onChange={e => set("albaran", e.target.value)} placeholder="Opcional" />
+          </div>
+          <div className="form-group">
+            <label>Operario que entrega</label>
+            <input value={form.operario} onChange={e => set("operario", e.target.value)} placeholder="Nombre del operario" />
+          </div>
+          <div className="form-group full">
+            <label>Notas</label>
+            <textarea value={form.notas} onChange={e => set("notas", e.target.value)} placeholder="Observaciones..." />
+          </div>
+        </div>
+        <div style={{ fontFamily: "var(--mono, monospace)", fontSize: 11, color: "var(--text-dim)", marginBottom: 16, background: "var(--accent-dim)", padding: "8px 12px", borderRadius: 6 }}>
+          ℹ️ Al confirmar se generará automáticamente el documento de entrega para imprimir.
+        </div>
+        <div className="form-actions">
+          <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+          <button className="btn btn-primary" onClick={handleSave}>✓ Confirmar y generar documento</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── MODAL PRÉSTAMO TEMPORAL ──────────────────────────────────────────────────
+function ModalPrestamo({ custodia, onClose, onSave }) {
+  const disponibles = custodia.udsTotales - custodia.udsEntregadas;
+  const [form, setForm] = useState({ uds: "", clienteDeutor: "", motivo: "", fecha: new Date().toISOString().split("T")[0] });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: typeof v === "string" ? v.toUpperCase() : v }));
+
+  const handleSave = () => {
+    const uds = Number(form.uds);
+    if (!uds || uds <= 0) { alert("Introduce las unidades a tomar prestadas"); return; }
+    if (uds > disponibles) { alert(`Solo hay ${disponibles} unidades disponibles`); return; }
+    if (!form.clienteDeutor) { alert("Indica a quién se destinan las unidades"); return; }
+    onSave({ ...form, uds, id: uid(), custodiaId: custodia.id, saldado: false });
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-title">⚠️ Préstamo Temporal de Custodia</div>
+        <div className="modal-sub">Usa unidades del stock de {custodia.cliente} para cubrir una necesidad urgente</div>
+        <div className="alert alert-warn">
+          <strong>⚠️ Esto crea una deuda visible.</strong> Las unidades se marcan como utilizadas pero queda pendiente la reposición al cliente <strong>{custodia.cliente}</strong>.
+        </div>
+        <div className="form-grid">
+          <div className="form-group">
+            <label>Unidades a tomar *</label>
+            <input type="number" min="1" max={disponibles} value={form.uds} onChange={e => set("uds", e.target.value)} placeholder={`Máx: ${disponibles}`} autoFocus />
+          </div>
+          <div className="form-group">
+            <label>Fecha</label>
+            <input type="date" value={form.fecha} onChange={e => set("fecha", e.target.value)} />
+          </div>
+          <div className="form-group full">
+            <label>Destinado a (cliente / pedido urgente) *</label>
+            <input value={form.clienteDeutor} onChange={e => set("clienteDeutor", e.target.value)} placeholder="¿Para quién o qué se usan?" />
+          </div>
+          <div className="form-group full">
+            <label>Motivo</label>
+            <textarea value={form.motivo} onChange={e => set("motivo", e.target.value)} placeholder="Explicación del préstamo..." style={{ minHeight: 60 }} />
+          </div>
+        </div>
+        <div className="form-actions">
+          <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+          <button className="btn" style={{ background: "#ff8c00", color: "#fff" }} onClick={handleSave}>⚠️ Registrar préstamo</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── PRINT MULTI-DELIVERY DOCUMENT ───────────────────────────────────────────
+function printMultiDeliveryDoc(cliente, lineas, allCustodias, operario, albaranSalida) {
+  const date = fmtNow();
+  const lineaIds = new Set(lineas.map(l => l.custodiaId));
+  const stockCliente = allCustodias.filter(c => c.cliente === cliente);
+
+  const lineasRows = lineas.map(l => {
+    const c = allCustodias.find(x => x.id === l.custodiaId);
+    return '<tr><td>' + (c?.referencia||'') + '</td><td>' + (c?.producto||'') + '</td><td>' + (c?.almacen||'') + '</td><td style="text-align:right;font-weight:bold;color:#E20613;">' + l.uds + '</td></tr>';
+  }).join('');
+
+  const totalUds = lineas.reduce((s,l)=>s+l.uds, 0);
+
+  const stockRows = stockCliente.map(c => {
+    const entregaExtra = lineas.find(l => l.custodiaId === c.id)?.uds || 0;
+    const pend = c.udsTotales - c.udsEntregadas - entregaExtra;
+    const highlight = lineaIds.has(c.id);
+    return '<tr' + (highlight ? ' style="background:#f0fff4;"' : '') + '><td>' + c.referencia + '</td><td>' + c.producto + '</td><td>' + c.almacen + '</td><td style="text-align:right">' + c.udsTotales + '</td><td style="text-align:right">' + (c.udsEntregadas + entregaExtra) + '</td><td style="text-align:right;font-weight:bold;color:' + (pend<=0?'#999':'#1a7f4b') + '">' + Math.max(0,pend) + '</td></tr>';
+  }).join('');
+
+  const css = `* {box-sizing:border-box;margin:0;padding:0}
+body {font-family:Arial,sans-serif;font-size:11px;color:#002D5A}
+.page-front {width:100%;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;page-break-after:always}
+.front-tipo {font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#E20613;margin-bottom:16px}
+.front-title {font-size:36px;font-weight:900;color:#002D5A;line-height:1.1;margin-bottom:20px}
+.front-divider {width:80px;height:3px;background:#E20613;margin:0 auto 30px}
+.front-cliente {font-size:20px;font-weight:700;color:#002D5A;margin-bottom:8px}
+.front-fecha {font-size:14px;color:#666;margin-bottom:40px}
+.front-dorso {font-size:15px;font-weight:700;color:#002D5A;letter-spacing:2px;border:2px solid #002D5A;padding:10px 22px;display:inline-block}
+.front-copia {font-size:11px;color:#999;margin-top:16px;letter-spacing:1px}
+.page-back {padding:18px}
+.header {display:flex;justify-content:space-between;border-bottom:3px solid #E20613;padding-bottom:10px;margin-bottom:16px}
+.company {font-size:16px;font-weight:bold}
+.section-title {font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#E20613;font-weight:bold;border-bottom:1px solid #eee;padding-bottom:3px;margin-bottom:8px}
+.section {margin-bottom:14px}
+table {width:100%;border-collapse:collapse;font-size:10px}
+th {background:#002D5A;color:white;padding:5px 7px;text-align:left}
+td {padding:4px 7px;border-bottom:1px solid #eee}
+tr:nth-child(even) td {background:#f9f9f9}
+.firma-grid {display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:20px}
+.firma-box {border-top:1px solid #002D5A;padding-top:5px;text-align:center;font-size:10px;color:#666}
+.footer {margin-top:16px;border-top:1px solid #ddd;padding-top:8px;font-size:9px;color:#999;text-align:center}
+@media print {@page {size:A4;margin:12mm} .page-front {margin:0;padding:30px}}`;
+
+  const html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Albaran Entrega</title><style>' + css + '</style></head><body>'
+    + '<div class="page-front">'
+    + '<div class="front-tipo">Recambios Ibiza S.A. &middot; AD Parts Distribucion</div>'
+    + '<div class="front-title">ALBARAN DE<br>ENTREGA DE STOCK</div>'
+    + '<div class="front-divider"></div>'
+    + '<div class="front-cliente">' + cliente + '</div>'
+    + '<div class="front-fecha">' + date + '</div>'
+    + '<div class="front-dorso">&#8629; INSTRUCCIONES AL DORSO</div>'
+    + '<div class="front-copia">Dejar esta copia al cliente</div>'
+    + '</div>'
+    + '<div class="page-back">'
+    + '<div class="header"><div><div class="company">RECAMBIOS IBIZA S.A.</div><div style="font-size:9px;color:#666">AD PARTS DISTRIBUIDOR OFICIAL</div></div>'
+    + '<div style="text-align:right"><div style="font-size:13px;font-weight:bold;color:#E20613">NOTA DE ENTREGA EN CUSTODIA</div><div style="font-size:10px;color:#666">Fecha: ' + date + '</div>'
+    + (albaranSalida ? '<div style="font-size:10px;color:#666">Albaran salida: ' + albaranSalida + '</div>' : '')
+    + '</div></div>'
+    + '<div class="section"><div class="section-title">Datos del cliente</div>'
+    + '<div style="font-size:11px;display:flex;gap:20px;flex-wrap:wrap">'
+    + '<div><b>Cliente:</b> ' + cliente + '</div>'
+    + (operario ? '<div><b>Entregado por:</b> ' + operario + '</div>' : '')
+    + '</div></div>'
+    + '<div class="section"><div class="section-title">Material entregado</div>'
+    + '<table><thead><tr><th>Referencia</th><th>Producto</th><th>Almacen</th><th style="text-align:right">Uds.</th></tr></thead>'
+    + '<tbody>' + lineasRows
+    + '<tr style="border-top:2px solid #002D5A"><td colspan="3" style="text-align:right;font-weight:bold">TOTAL UNIDADES</td><td style="text-align:right;font-weight:bold;color:#E20613">' + totalUds + '</td></tr>'
+    + '</tbody></table></div>'
+    + '<div class="section"><div class="section-title">Stock restante de ' + cliente + ' tras esta entrega</div>'
+    + '<table><thead><tr><th>Referencia</th><th>Producto</th><th>Almacen</th><th style="text-align:right">Total</th><th style="text-align:right">Entregadas</th><th style="text-align:right">Pendientes</th></tr></thead>'
+    + '<tbody>' + stockRows + '</tbody></table></div>'
+    + '<div class="firma-grid"><div class="firma-box">Firma cliente<br><br><br></div><div class="firma-box">Firma operario<br><br><br></div></div>'
+    + '<div class="footer">Recambios Ibiza S.A. &middot; AD Parts Distribucion &middot; ' + date + '</div>'
+    + '</div></body></html>';
+
+  const win = window.open('', '_blank', 'width=820,height=950');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => win.print(), 500);
+}
+
+// ─── MODAL NUEVA ENTREGA (multi-producto) ─────────────────────────────────────
+function ModalNuevaEntrega({ data, onClose, onSave }) {
+  const [step, setStep] = useState(1);
+  const [clienteSeleccionado, setClienteSeleccionado] = useState("");
+  const [cantidades, setCantidades] = useState({});
+  const [operario, setOperario] = useState("");
+  const [albaranSalida, setAlbaranSalida] = useState("");
+  const [fecha, setFecha] = useState(new Date().toISOString().split("T")[0]);
+
+  // Clientes con stock activo
+  const clientesActivos = [...new Set(
+    data.custodias
+      .filter(c => c.udsTotales - c.udsEntregadas > 0)
+      .map(c => c.cliente)
+  )].sort();
+
+  // Custodias activas del cliente seleccionado
+  const custodiasCliente = data.custodias.filter(
+    c => c.cliente === clienteSeleccionado && c.udsTotales - c.udsEntregadas > 0
+  );
+
+  const setCantidad = (id, val) => setCantidades(prev => ({ ...prev, [id]: val }));
+
+  // Líneas con unidades > 0
+  const lineasValidas = custodiasCliente.filter(c => {
+    const v = Number(cantidades[c.id]);
+    return v > 0 && v <= c.udsTotales - c.udsEntregadas;
+  });
+
+  const totalUds = lineasValidas.reduce((s, c) => s + Number(cantidades[c.id]), 0);
+
+  const handleConfirm = () => {
+    if (lineasValidas.length === 0) { alert("Introduce al menos una cantidad válida"); return; }
+    if (!operario.trim()) { alert("⚠️ Obligatorio rellenar quién hace la entrega"); return; }
+    const entregas = lineasValidas.map(c => ({
+      id: uid(), custodiaId: c.id,
+      fecha, uds: Number(cantidades[c.id]),
+      albaran: albaranSalida, operario,
+      notas: "Entrega múltiple"
+    }));
+    onSave(entregas, clienteSeleccionado, albaranSalida, operario);
+    printMultiDeliveryDoc(
+      clienteSeleccionado,
+      lineasValidas.map(c => ({ custodiaId: c.id, uds: Number(cantidades[c.id]) })),
+      data.custodias, operario, albaranSalida
+    );
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 700 }}>
+        <div className="modal-title">🟢 Nueva Entrega</div>
+        <div className="modal-sub">Registra la entrega de uno o varios productos a un cliente</div>
+
+        {/* STEP INDICATOR */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+          {[{ n: 1, label: "Cliente" }, { n: 2, label: "Productos" }, { n: 3, label: "Confirmar" }].map(s => (
+            <div key={s.n} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{
+                width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+                background: step >= s.n ? "var(--green)" : "var(--surface2)",
+                color: step >= s.n ? "#fff" : "var(--text-dim)",
+                fontFamily: "var(--mono, monospace)", fontSize: 12, fontWeight: 700,
+                border: `2px solid ${step >= s.n ? "var(--green)" : "var(--border)"}`,
+                transition: "all 0.2s"
+              }}>{s.n}</div>
+              <span style={{ fontSize: 12, fontWeight: 600, color: step >= s.n ? "var(--text)" : "var(--text-dim)" }}>{s.label}</span>
+              {s.n < 3 && <span style={{ color: "var(--text-faint)", fontSize: 14 }}>›</span>}
+            </div>
+          ))}
+        </div>
+
+        {/* STEP 1: SELECT CLIENT */}
+        {step === 1 && (
+          <div>
+            <div className="form-group" style={{ marginBottom: 20 }}>
+              <label>Cliente *</label>
+              <select value={clienteSeleccionado} onChange={e => { setClienteSeleccionado(e.target.value); setCantidades({}); }}
+                style={{ fontSize: 14, padding: "12px 14px" }}>
+                <option value="">— Selecciona un cliente —</option>
+                {clientesActivos.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            {clienteSeleccionado && (
+              <div className="alert alert-info">
+                {custodiasCliente.length} línea{custodiasCliente.length !== 1 ? "s" : ""} de producto activa{custodiasCliente.length !== 1 ? "s" : ""} para <strong>{clienteSeleccionado}</strong>
+              </div>
+            )}
+            <div className="form-actions">
+              <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+              <button className="btn btn-green" onClick={() => setStep(2)} disabled={!clienteSeleccionado}
+                style={{ opacity: clienteSeleccionado ? 1 : 0.4 }}>
+                Seleccionar productos →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 2: QUANTITIES */}
+        {step === 2 && (
+          <div>
+            <div style={{ marginBottom: 14, fontFamily: "var(--mono,monospace)", fontSize: 12, color: "var(--text-dim)" }}>
+              Cliente: <strong style={{ color: "var(--text)" }}>{clienteSeleccionado}</strong> · Indica las unidades a entregar de cada producto (deja en 0 los que no se entregan)
+            </div>
+            <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", marginBottom: 16 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--mono,monospace)", fontSize: 12 }}>
+                <thead>
+                  <tr>
+                    <th style={{ background: "var(--surface2)", padding: "8px 12px", textAlign: "left", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-dim)", borderBottom: "1px solid var(--border)" }}>Referencia</th>
+                    <th style={{ background: "var(--surface2)", padding: "8px 12px", textAlign: "left", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-dim)", borderBottom: "1px solid var(--border)" }}>Producto</th>
+                    <th style={{ background: "var(--surface2)", padding: "8px 12px", textAlign: "center", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-dim)", borderBottom: "1px solid var(--border)" }}>Disponibles</th>
+                    <th style={{ background: "var(--surface2)", padding: "8px 12px", textAlign: "center", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.8px", color: "var(--text-dim)", borderBottom: "1px solid var(--border)" }}>A entregar</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {custodiasCliente.map((c, i) => {
+                    const disponibles = c.udsTotales - c.udsEntregadas;
+                    const val = cantidades[c.id] || "";
+                    const numVal = Number(val);
+                    const isOver = numVal > disponibles;
+                    const isActive = numVal > 0 && !isOver;
+                    return (
+                      <tr key={c.id} style={{ background: isActive ? "rgba(26,127,75,0.06)" : i % 2 === 1 ? "var(--surface2)" : "transparent" }}>
+                        <td style={{ padding: "10px 12px", borderBottom: "1px solid var(--border)" }}>
+                          <span style={{fontFamily:"var(--mono,monospace)",fontWeight:700,color:"var(--green)"}}>{c.referencia}</span>
+                        </td>
+                        <td style={{ padding: "10px 12px", borderBottom: "1px solid var(--border)", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.producto}</td>
+                        <td style={{ padding: "10px 12px", borderBottom: "1px solid var(--border)", textAlign: "center", fontWeight: 700, color: disponibles < 0 ? "#E20613" : "var(--green)", animation: disponibles < 0 ? "blink-red 1s ease-in-out infinite" : "none" }}>{disponibles}</td>
+                        <td style={{ padding: "6px 12px", borderBottom: "1px solid var(--border)", textAlign: "center" }}>
+                          <input
+                            type="number" min="0" max={disponibles}
+                            value={val}
+                            onChange={e => setCantidad(c.id, e.target.value)}
+                            style={{
+                              width: 80, textAlign: "center", padding: "6px 8px",
+                              border: `2px solid ${isOver ? "#E20613" : isActive ? "var(--green)" : "var(--border)"}`,
+                              borderRadius: 6, background: "var(--surface2)", color: "var(--text)",
+                              fontFamily: "var(--mono,monospace)", fontSize: 13, fontWeight: 700,
+                            }}
+                            placeholder="0"
+                          />
+                          {isOver && <div style={{ fontSize: 10, color: "#E20613", marginTop: 2 }}>máx {disponibles}</div>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {totalUds > 0 && (
+              <div className="alert" style={{ marginBottom: 14, background:"rgba(26,127,75,0.08)", border:"1px solid rgba(26,127,75,0.3)", color:"var(--green)" }}>
+                ✓ <strong style={{color:"var(--green)"}}>{lineasValidas.length} producto{lineasValidas.length !== 1 ? "s" : ""}</strong> seleccionado{lineasValidas.length !== 1 ? "s" : ""} · <strong style={{color:"var(--green)"}}>{totalUds} unidades</strong> en total
+              </div>
+            )}
+            <div className="form-actions">
+              <button className="btn btn-ghost" onClick={() => setStep(1)}>← Volver</button>
+              <button className="btn btn-green" onClick={() => setStep(3)} disabled={lineasValidas.length === 0}
+                style={{ opacity: lineasValidas.length > 0 ? 1 : 0.4 }}>
+                Confirmar selección →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 3: CONFIRM */}
+        {step === 3 && (
+          <div>
+            <div style={{ marginBottom: 16, background: "rgba(26,127,75,0.08)", border: "1px solid rgba(26,127,75,0.3)", borderRadius: 8, padding: "12px 16px" }}>
+              <div style={{ fontFamily: "var(--mono,monospace)", fontSize: 12, color: "var(--green)", marginBottom: 8, fontWeight: 700 }}>
+                Resumen de entrega · {clienteSeleccionado}
+              </div>
+              {lineasValidas.map(c => (
+                <div key={c.id} style={{ fontFamily: "var(--mono,monospace)", fontSize: 12, display: "flex", justifyContent: "space-between", padding: "3px 0", borderBottom: "1px solid rgba(26,127,75,0.15)" }}>
+                  <span>{c.referencia} · {c.producto}</span>
+                  <strong style={{ color: "var(--green)" }}>{cantidades[c.id]} ud.</strong>
+                </div>
+              ))}
+              <div style={{ fontFamily: "var(--mono,monospace)", fontSize: 13, display: "flex", justifyContent: "space-between", marginTop: 8, fontWeight: 700 }}>
+                <span>TOTAL</span>
+                <span style={{ color: "var(--green)" }}>{totalUds} unidades</span>
+              </div>
+            </div>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Fecha de entrega</label>
+                <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label>Nº Albarán de salida</label>
+                <input value={albaranSalida} onChange={e => setAlbaranSalida(e.target.value.toUpperCase())} placeholder="Opcional" />
+              </div>
+              <div className="form-group full">
+                <label>Operario que entrega</label>
+                <input value={operario} onChange={e => setOperario(e.target.value.toUpperCase())} placeholder="Nombre del operario *" style={{ borderColor: !operario ? "var(--accent)" : "var(--border)" }} />
+              </div>
+            </div>
+            <div style={{ fontFamily: "var(--mono,monospace)", fontSize: 11, color: "var(--text-dim)", background: "var(--accent-dim)", padding: "8px 12px", borderRadius: 6, marginTop: 12, marginBottom: 0 }}>
+              ℹ️ Al confirmar se guardará la entrega y se generará el documento para imprimir.
+            </div>
+            <div className="form-actions">
+              <button className="btn btn-ghost" onClick={() => setStep(2)}>← Volver</button>
+              <button className="btn btn-green" onClick={handleConfirm}>✓ Confirmar y generar documento</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── MODAL CONFIRMACIÓN ──────────────────────────────────────────────────────
+function ModalConfirmar({ titulo, mensaje, detalles, tipo = "danger", labelConfirm = "Confirmar", onConfirm, onClose }) {
+  const colors = tipo === "danger"
+    ? { bg: "rgba(226,6,19,0.08)", border: "rgba(226,6,19,0.3)", btn: "#E20613", icon: "🗑️" }
+    : { bg: "rgba(255,140,0,0.08)", border: "rgba(255,140,0,0.3)", btn: "#ff8c00", icon: "⚠️" };
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 460 }}>
+        <div style={{ textAlign: "center", marginBottom: 20 }}>
+          <div style={{ fontSize: 40, marginBottom: 10 }}>{colors.icon}</div>
+          <div className="modal-title" style={{ fontSize: 16 }}>{titulo}</div>
+        </div>
+        <div style={{ background: colors.bg, border: `1px solid ${colors.border}`, borderRadius: 8, padding: "14px 16px", marginBottom: 16, fontFamily: "var(--mono,monospace)", fontSize: 12, color: "var(--text)" }}>
+          {mensaje}
+          {detalles && (
+            <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${colors.border}`, color: "var(--text-dim)" }}>
+              {detalles}
+            </div>
+          )}
+        </div>
+        <div style={{ fontFamily: "var(--mono,monospace)", fontSize: 11, color: "var(--text-dim)", textAlign: "center", marginBottom: 20 }}>
+          Esta acción no se puede deshacer.
+        </div>
+        <div className="form-actions" style={{ justifyContent: "center", gap: 16 }}>
+          <button className="btn btn-ghost" style={{ minWidth: 120 }} onClick={onClose}>Cancelar</button>
+          <button className="btn" style={{ background: colors.btn, color: "#fff", minWidth: 140 }} onClick={onConfirm}>{labelConfirm}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── MODAL EDITAR CUSTODIA ────────────────────────────────────────────────────
+function ModalEditarCustodia({ custodia, onClose, onSave, clientes }) {
+  const [form, setForm] = useState({ ...custodia });
+  const [confirmando, setConfirmando] = useState(false);
+  const set = (k, v) => setForm(f => ({ ...f, [k]: typeof v === "string" ? v.toUpperCase() : v }));
+
+  const handleGuardar = () => {
+    if (!form.cliente || !form.referencia || !form.udsTotales) {
+      alert("Rellena al menos: Cliente, Referencia y Unidades totales"); return;
+    }
+    if (Number(form.udsEntregadas) > Number(form.udsTotales)) {
+      alert("Las unidades entregadas no pueden superar las totales"); return;
+    }
+    setConfirmando(true);
+  };
+
+  if (confirmando) return (
+    <ModalConfirmar
+      titulo="¿Confirmar cambios?"
+      tipo="warn"
+      labelConfirm="✓ Guardar cambios"
+      mensaje={`Vas a modificar la custodia de ${custodia.cliente} · ${custodia.referencia}`}
+      detalles={`Cambios en: cliente, albarán, referencia, producto, almacén, unidades u otros campos. Revisa que todo sea correcto antes de guardar.`}
+      onConfirm={() => onSave({ ...form, udsTotales: Number(form.udsTotales), udsEntregadas: Number(form.udsEntregadas) })}
+      onClose={() => setConfirmando(false)}
+    />
+  );
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-title">✏️ Editar Custodia</div>
+        <div className="modal-sub">Modifica los datos de esta custodia · Los cambios se guardan en la nube</div>
+        <div className="alert" style={{ background: "rgba(255,140,0,0.08)", border: "1px solid rgba(255,140,0,0.25)", color: "#ff8c00", marginBottom: 20 }}>
+          ⚠️ Estás editando un registro existente. Cualquier cambio sobreescribirá los datos actuales.
+        </div>
+        <div className="form-grid">
+          <div className="form-group">
+            <label>Cliente *</label>
+            <input list="cl-edit-list" value={form.cliente} onChange={e => set("cliente", e.target.value)} />
+            <datalist id="cl-edit-list">{clientes.map(c => <option key={c} value={c} />)}</datalist>
+          </div>
+          <div className="form-group">
+            <label>Fecha de compra</label>
+            <input type="date" value={form.fecha?.match(/^\d{4}-\d{2}-\d{2}$/) ? form.fecha : ""} onChange={e => set("fecha", e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Nº Albarán</label>
+            <input value={form.albaran || ""} onChange={e => set("albaran", e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Nº Promoción Skrit</label>
+            <input value={form.promSkrit || ""} onChange={e => set("promSkrit", e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Referencia *</label>
+            <input value={form.referencia} onChange={e => set("referencia", e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Unidades totales *</label>
+            <input type="number" min="0" value={form.udsTotales} onChange={e => set("udsTotales", e.target.value)} />
+          </div>
+          <div className="form-group full">
+            <label>Descripción del producto</label>
+            <input value={form.producto || ""} onChange={e => set("producto", e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Almacén</label>
+            <select value={form.almacen} onChange={e => set("almacen", e.target.value)}>
+              <option>CENTRAL</option><option>MONTECRISTO</option><option>EXTERNO</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Uds. ya entregadas</label>
+            <input type="number" min="0" value={form.udsEntregadas} onChange={e => set("udsEntregadas", e.target.value)} />
+          </div>
+          <div className="form-group full">
+            <label>Notas</label>
+            <input value={form.notas || ""} onChange={e => set("notas", e.target.value)} placeholder="Observaciones..." />
+          </div>
+        </div>
+        <div className="form-actions">
+          <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+          <button className="btn" style={{ background: "#ff8c00", color: "#fff" }} onClick={handleGuardar}>✏️ Guardar cambios</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ─── MODAL EDITAR ENTREGA ─────────────────────────────────────────────────────
+function ModalEditarEntrega({ entrega, custodia, onClose, onSave }) {
+  const maxUds = (custodia?.udsTotales || 999) - (custodia?.udsEntregadas || 0) + entrega.uds;
+  const [form, setForm] = useState({ ...entrega });
+  const [confirmando, setConfirmando] = useState(false);
+  const set = (k, v) => setForm(f => ({ ...f, [k]: typeof v === "string" ? v.toUpperCase() : v }));
+
+  const handleGuardar = () => {
+    const uds = Number(form.uds);
+    if (!uds || uds <= 0) { alert("Las unidades deben ser mayor que 0"); return; }
+    if (uds > maxUds) { alert(`Máximo ${maxUds} unidades para esta custodia`); return; }
+    if (!form.operario?.trim()) { alert("⚠️ Obligatorio rellenar quién hizo la entrega"); return; }
+    setConfirmando(true);
+  };
+
+  if (confirmando) return (
+    <ModalConfirmar
+      titulo="¿Confirmar cambios en la entrega?"
+      tipo="warn"
+      labelConfirm="✓ Guardar cambios"
+      mensaje={`Modificando entrega #${entrega.numEntrega || "—"} de ${custodia?.cliente}`}
+      detalles={`${custodia?.referencia} · ${form.uds} uds · ${form.fecha}`}
+      onConfirm={() => onSave({ ...form, uds: Number(form.uds) })}
+      onClose={() => setConfirmando(false)}
+    />
+  );
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-title">✏️ Editar Entrega</div>
+        <div className="modal-sub">
+          #{entrega.numEntrega || "—"} · {custodia?.cliente} · {custodia?.referencia}
+        </div>
+        <div className="alert" style={{ background:"rgba(255,140,0,0.08)", border:"1px solid rgba(255,140,0,0.25)", color:"#ff8c00", marginBottom:20 }}>
+          ⚠️ Estás editando un registro de entrega existente.
+        </div>
+        <div className="form-grid">
+          <div className="form-group">
+            <label>Fecha de entrega</label>
+            <input type="date" value={form.fecha} onChange={e => set("fecha", e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Unidades entregadas *</label>
+            <input type="number" min="1" max={maxUds} value={form.uds} onChange={e => set("uds", e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>Nº Albarán Skrit</label>
+            <input value={form.albaran || ""} onChange={e => set("albaran", e.target.value)} placeholder="Opcional" />
+          </div>
+          <div className="form-group">
+            <label>Operario *</label>
+            <input value={form.operario || ""} onChange={e => set("operario", e.target.value)}
+              style={{ borderColor: !form.operario ? "var(--accent)" : "var(--border)" }} />
+          </div>
+          <div className="form-group full">
+            <label>Notas</label>
+            <textarea value={form.notas || ""} onChange={e => set("notas", e.target.value)} style={{ minHeight:60 }} />
+          </div>
+        </div>
+        <div className="form-actions">
+          <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+          <button className="btn" style={{ background:"#ff8c00", color:"#fff" }} onClick={handleGuardar}>✏️ Guardar cambios</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+function Dashboard({ data, onNuevaCustodia, onNuevaEntrega, onEntrega, onDelete, onEditar, onEditarEntrega, onPrestamo, onSaldarDeuda }) {
+  const [search, setSearch] = useState("");
+  const [filterCliente, setFilterCliente] = useState("");
+  const [filterAlmacen, setFilterAlmacen] = useState("");
+  const [filterEstado, setFilterEstado] = useState("");
+  const [filterAlbaran, setFilterAlbaran] = useState("");
+  const [filterYear, setFilterYear] = useState("");
+
+  const clientes = [...new Set(data.custodias.map(c => c.cliente))].sort();
+  const almacenes = [...new Set(data.custodias.map(c => c.almacen).filter(a => a && a !== "CONTINUACION"))].sort();
+  const years = [...new Set(
+    data.custodias.map(c => c.fecha?.match(/^(\d{4})/)?.[1]).filter(Boolean)
+  )].sort().reverse();
+
+  // Map prestamos to custodias
+  const custodiaDeudas = {};
+  (data.prestamos || []).filter(p => !p.saldado).forEach(p => {
+    if (!custodiaDeudas[p.custodiaId]) custodiaDeudas[p.custodiaId] = [];
+    custodiaDeudas[p.custodiaId].push(p);
+  });
+
+  const ningunoSeleccionado = !filterCliente;
+
+  const filtered = ningunoSeleccionado ? [] : data.custodias.filter(c => {
+    const pendientes = c.udsTotales - c.udsEntregadas;
+    if (filterEstado === "ACTIVAS" && pendientes <= 0) return false;
+    if (filterEstado === "COMPLETAS" && pendientes > 0) return false;
+    if (filterCliente && c.cliente !== filterCliente) return false;
+    if (filterAlmacen && c.almacen !== filterAlmacen) return false;
+    if (filterAlbaran && !(c.albaran || "").toLowerCase().includes(filterAlbaran.toLowerCase())) return false;
+    if (filterYear && !(c.fecha || "").startsWith(filterYear)) return false;
+    const q = search.toLowerCase();
+    if (q && !`${c.cliente} ${c.referencia} ${c.producto} ${c.albaran}`.toLowerCase().includes(q)) return false;
+    return true;
+  }).sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""));
+
+  // Entregas enriquecidas del cliente seleccionado (para vista "Completadas")
+  const entregasCliente = filterCliente ? data.entregas
+    .filter(e => { const c = data.custodias.find(x => x.id === e.custodiaId); return c?.cliente === filterCliente; })
+    .map(e => { const c = data.custodias.find(x => x.id === e.custodiaId) || {}; return { ...e, custodia: c }; })
+    .sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""))
+    : [];
+
+  const totalUds = data.custodias.reduce((s, c) => s + c.udsTotales, 0);
+  const entregadasUds = data.custodias.reduce((s, c) => s + c.udsEntregadas, 0);
+  const activasCnt = data.custodias.filter(c => c.udsTotales - c.udsEntregadas > 0).length;
+  const clientesCnt = new Set(data.custodias.map(c => c.cliente)).size;
+  const deudasActivas = (data.prestamos || []).filter(p => !p.saldado);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+      <div className="dash-top">
+      {deudasActivas.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          {deudasActivas.map(p => {
+            const cust = data.custodias.find(c => c.id === p.custodiaId);
+            return (
+              <div key={p.id} className="debt-alert">
+                <span>⚠️</span>
+                <span style={{ flex: 1 }}>
+                  <strong>DEUDA ACTIVA:</strong> {p.uds} ud. de {cust?.referencia || "ref. desconocida"} tomadas de la custodia de <strong>{cust?.cliente}</strong> para {p.clienteDeutor} el {fmt(p.fecha)}
+                  {p.motivo && ` · ${p.motivo}`}
+                </span>
+                <button className="btn btn-sm btn-ghost" onClick={() => onSaldarDeuda(p.id)}>✓ Saldar</button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="kpis">
+        <div className="kpi">
+          <div className="kpi-label">Custodias activas</div>
+          <div className="kpi-value green">{activasCnt}</div>
+          <div className="kpi-sub">de {data.custodias.length} total</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-label">Clientes con stock</div>
+          <div className="kpi-value">{clientesCnt}</div>
+          <div className="kpi-sub">clientes distintos</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-label">Unidades en almacén</div>
+          <div className="kpi-value green">{totalUds - entregadasUds}</div>
+          <div className="kpi-sub">pendientes de entrega</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-label">Deudas activas</div>
+          <div className={`kpi-value ${deudasActivas.length > 0 ? "debt-alert" : "green"}`}>{deudasActivas.length}</div>
+          <div className="kpi-sub">{data.entregas.length} entregas totales</div>
+        </div>
+      </div>
+
+      <div className="section-header" style={{ marginTop: 16 }}>
+        <div>
+          <div className="section-title">Stock en custodia</div>
+          <div className="section-sub">{ningunoSeleccionado ? "Usa los filtros para consultar el stock" : filterEstado === "COMPLETAS" ? `${entregasCliente.length} entregas realizadas` : `${filtered.length} custodias activas`}</div>
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button className="btn btn-primary" onClick={onNuevaCustodia}>+ Nueva custodia</button>
+          <button className="btn btn-green" onClick={onNuevaEntrega}>🚚 Nueva entrega</button>
+        </div>
+      </div>
+
+      <div className="search-bar" style={{ marginBottom: 0, paddingBottom: 12 }}>
+        <input className="search-input" placeholder="🔍  Buscar por cliente, referencia, producto..." value={search} onChange={e => setSearch(e.target.value.toUpperCase())} />
+        <input className="search-input" style={{ maxWidth: 130 }} placeholder="Nº Albarán" value={filterAlbaran} onChange={e => setFilterAlbaran(e.target.value.toUpperCase())} />
+        <input className="search-input" style={{ maxWidth: 80 }} placeholder="Año" type="number" min="2000" max="2099" value={filterYear} onChange={e => setFilterYear(e.target.value)} />
+        <select className="filter-select" value={filterCliente} onChange={e => { const v = e.target.value; setFilterCliente(v); if (v && !filterEstado) setFilterEstado("ACTIVAS"); if (!v) setFilterEstado(""); }}>
+          <option value="">— Cliente —</option>
+          {clientes.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select className="filter-select" value={filterEstado} onChange={e => setFilterEstado(e.target.value)}>
+          <option value="">— Estado —</option>
+          <option value="ACTIVAS">Activas</option>
+          <option value="TODAS">Todas</option>
+          <option value="COMPLETAS">Completadas</option>
+        </select>
+      </div>
+      </div>{/* end dash-top */}
+
+      <div className="dash-body">
+      {ningunoSeleccionado ? (
+        <div className="empty">
+          <div className="empty-icon">🔍</div>
+          <div className="empty-title">Selecciona un filtro para consultar</div>
+          <div className="empty-sub">Elige un cliente, almacén o estado — o busca por texto</div>
+          <div className="krafted">Krafted by <span>Yakoba Moreno</span></div>
+          <div className="krafted" style={{ marginTop: 6 }}>Designed in <span style={{ color: "#002D5A" }}>Claude Code</span></div>
+          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>Gestor de Stocks y Custodias <span style={{ color: "var(--text-dim)" }}>v.7.1</span></div>
+        </div>
+      ) : filterEstado === "COMPLETAS" ? (
+        entregasCliente.length === 0 ? (
+          <div className="empty">
+            <div className="empty-icon">🚚</div>
+            <div className="empty-title">Sin entregas registradas</div>
+            <div className="empty-sub">Este cliente aún no tiene entregas realizadas</div>
+          </div>
+        ) : (
+          <div className="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Nº Entrega</th><th>Fecha</th><th>Referencia</th><th>Producto</th>
+                <th>Almacén</th><th>Uds.</th><th>Operario</th><th>Alb. Skrit</th><th>Acciones</th>
+              </tr></thead>
+              <tbody>
+                {entregasCliente.map(e => (
+                  <tr key={e.id}>
+                    <td style={{ fontFamily:"var(--mono,monospace)", fontWeight:700, color:"var(--accent)" }}>{e.numEntrega || "—"}</td>
+                    <td style={{ color:"var(--text-dim)" }}>{fmt(e.fecha)}</td>
+                    <td style={{ fontFamily:"var(--mono,monospace)", fontWeight:700, color:"var(--text)" }}>{e.custodia?.referencia || "—"}</td>
+                    <td style={{ maxWidth:180, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{e.custodia?.producto}</td>
+                    <td><span className="tag tag-accent">{e.custodia?.almacen}</span></td>
+                    <td style={{ textAlign:"right", fontWeight:700, color:"var(--accent)" }}>{e.uds}</td>
+                    <td style={{ color:"var(--text-dim)" }}>{e.operario || "—"}</td>
+                    <td style={{ color:"var(--text-dim)" }}>{e.albaran || "—"}</td>
+                    <td>
+                      <button className="btn btn-sm" style={{ background:"rgba(0,45,90,0.1)", color:"var(--blue2)", border:"1px solid rgba(0,45,90,0.2)" }}
+                        onClick={() => onEditarEntrega(e)} title="Editar esta entrega">✏️</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      ) : filtered.length === 0 ? (
+        <div className="empty">
+          <div className="empty-icon">📦</div>
+          <div className="empty-title">Sin resultados</div>
+          <div className="empty-sub">No hay custodias que coincidan con los filtros aplicados</div>
+        </div>
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Cliente</th><th>Albarán</th><th>Referencia</th><th>Producto</th>
+                <th style={{width:90}}>Almacén</th><th style={{width:72,textAlign:"right"}}>Cmprd.</th><th style={{width:72,textAlign:"right"}}>Entrgd.</th><th style={{width:72,textAlign:"right"}}>Stock</th>
+                <th style={{width:86}}>Fecha</th><th style={{width:120}}>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(c => {
+                const pendientes = c.udsTotales - c.udsEntregadas;
+                const deudas = custodiaDeudas[c.id] || [];
+                return (
+                  <tr key={c.id}>
+                    <td style={{ fontWeight: 700 }}>
+                      {c.cliente}
+                      {deudas.length > 0 && <span className="tag tag-accent" style={{ marginLeft: 6 }}>⚠️ DEUDA</span>}
+                    </td>
+                    <td style={{ color: "var(--text-dim)" }}>{c.albaran || "—"}</td>
+                    <td style={{ fontFamily: "var(--mono,monospace)", fontWeight: 700, color: "var(--text)" }}>{c.referencia}</td>
+                    <td style={{ maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.producto}</td>
+                    <td><span className="tag tag-accent">{c.almacen}</span></td>
+                    <td style={{ textAlign: "right", whiteSpace:"nowrap" }}>{c.udsTotales}</td>
+                    <td style={{ textAlign: "right", whiteSpace:"nowrap" }}>{c.udsEntregadas}</td>
+                    <td style={{ fontFamily:"var(--mono,monospace)", fontWeight:700, color: pendientes>0 ? "var(--green)" : "var(--text-dim)", textAlign:"right" }}>{pendientes}</td>
+                    <td style={{ color: "var(--text-dim)" }}>{fmt(c.fecha)}</td>
+                    <td>
+                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                        {pendientes > 0 && (
+                          <>
+                            <button className="btn btn-ghost btn-sm" onClick={() => onEntrega(c)}>🚚 Entregar</button>
+                            <button className="btn btn-sm" style={{ background: "rgba(255,140,0,0.12)", color: "#ff8c00", border: "1px solid rgba(255,140,0,0.3)" }} onClick={() => onPrestamo(c)} title="Tomar unidades prestadas temporalmente">⚠️</button>
+                          </>
+                        )}
+                        <button className="btn btn-sm" style={{ background: "rgba(0,45,90,0.1)", color: "var(--blue2)", border: "1px solid rgba(0,45,90,0.2)" }} onClick={() => onEditar(c)} title="Editar custodia">✏️</button>
+                        <button className="btn btn-danger btn-sm" onClick={() => onDelete(c)} title="Eliminar custodia">🗑️</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      </div>{/* end dash-body */}
+    </div>
+  );
+}
+
+
+// ─── REIMPRIMIR MOVIMIENTO ───────────────────────────────────────────────────
+function reprintMovimiento(m, data, autoprint = true) {
+  if (m.tipo === "ENTREGA") {
+    // Si es un grupo de entrega múltiple
+    if (m.esMultiple && m.grupoEntregaKey) {
+      const entregasGrupo = data.entregas.filter(e => e.grupoEntrega === m.grupoEntregaKey);
+      const lineas = entregasGrupo.map(e => ({ custodiaId: e.custodiaId, uds: e.uds }));
+      const operario = entregasGrupo[0]?.operario || "";
+      const albaran = entregasGrupo[0]?.albaran || "";
+      const win = window.open('', '_blank', 'width=820,height=950');
+      printMultiDeliveryDoc(m.cliente, lineas, data.custodias, operario, albaran);
+      return;
+    }
+    const eid = m.id.replace("e-", "");
+    const entrega = data.entregas.find(e => e.id === eid);
+    const custodia = data.custodias.find(c => c.id === entrega?.custodiaId);
+    if (entrega && custodia) {
+      printDeliveryDoc(custodia, entrega, data.custodias);
+    } else {
+      alert("No se encontró el documento original de esta entrega.");
+    }
+  } else {
+    const cid = m.id.replace("c-", "");
+    const custodia = data.custodias.find(c => c.id === cid);
+    if (!custodia) { alert("No se encontró la custodia."); return; }
+    const date = fmtNow();
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>Custodia — ${custodia.cliente}</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:Arial,sans-serif; font-size:11px; color:#002D5A; padding:20px; }
+  .header { display:flex; justify-content:space-between; border-bottom:3px solid #E20613; padding-bottom:10px; margin-bottom:16px; }
+  .company { font-size:18px; font-weight:bold; }
+  .doc-title h2 { font-size:14px; color:#E20613; text-align:right; }
+  .row { display:flex; gap:8px; padding:6px 0; border-bottom:1px solid #eee; font-size:11px; }
+  .label { font-weight:bold; min-width:130px; }
+  .footer { margin-top:20px; font-size:9px; color:#999; text-align:center; border-top:1px solid #ddd; padding-top:8px; }
+  @media print { body { padding:8px; } }
+</style></head><body>
+<div class="header">
+  <div><div class="company">RECAMBIOS IBIZA S.A.</div><div style="font-size:10px;color:#666">AD Parts Distribución</div></div>
+  <div class="doc-title"><h2>FICHA DE CUSTODIA</h2><div style="font-size:10px;color:#666;text-align:right">Impreso: ${date}</div></div>
+</div>
+<div class="row"><span class="label">Cliente:</span><span>${custodia.cliente}</span></div>
+<div class="row"><span class="label">Referencia:</span><span>${custodia.referencia}</span></div>
+<div class="row"><span class="label">Producto:</span><span>${custodia.producto}</span></div>
+<div class="row"><span class="label">Albarán compra:</span><span>${custodia.albaran || "—"}</span></div>
+<div class="row"><span class="label">Almacén:</span><span>${custodia.almacen}</span></div>
+<div class="row"><span class="label">Fecha compra:</span><span>${custodia.fecha || "—"}</span></div>
+<div class="row"><span class="label">Registrado por:</span><span>${custodia.operarioCustodia || "—"}</span></div>
+<div class="row"><span class="label">Uds. compradas:</span><span style="font-weight:bold">${custodia.udsTotales}</span></div>
+<div class="row"><span class="label">Uds. entregadas:</span><span>${custodia.udsEntregadas}</span></div>
+<div class="row"><span class="label">Uds. pendientes:</span><span style="font-weight:bold;color:#1a7f4b">${custodia.udsTotales - custodia.udsEntregadas}</span></div>
+${custodia.notas ? `<div class="row"><span class="label">Notas:</span><span>${custodia.notas}</span></div>` : ""}
+<div class="footer">Recambios Ibiza S.A. · AD Parts Distribución · Generado el ${date}</div>
+</body></html>`;
+    const win = window.open("", "_blank", "width=700,height=600");
+    win.document.write(html);
+    win.document.close();
+    if (autoprint) setTimeout(() => win.print(), 400);
+  }
+}
+
+// ─── HISTORIAL DE MOVIMIENTOS ────────────────────────────────────────────────
+function Historial({ data }) {
+  const [search, setSearch] = useState("");
+
+  // Combinar custodias (ENTRADA) y entregas agrupadas (SALIDA) en un solo timeline
+  const gruposEntrega = agruparEntregas(data.entregas, data.custodias);
+  const movimientos = [
+    ...data.custodias.map(c => ({
+      id: "c-" + c.id, tipo: "CUSTODIA",
+      fecha: c.fecha || "", cliente: c.cliente,
+      referencia: c.referencia, producto: c.producto,
+      almacen: c.almacen, uds: c.udsTotales,
+      operario: c.operarioCustodia || "", albaran: c.albaran, notas: c.notas,
+      esMultiple: false, grupoEntregaKey: null,
+    })),
+    ...gruposEntrega.map(g => ({
+      id: "eg-" + g.key,
+      tipo: "ENTREGA",
+      fecha: g.fecha,
+      cliente: g.cliente,
+      referencia: g.esMultiple ? "MÚLTIPLE" : (g.lineas[0]?.referencia || ""),
+      producto: g.esMultiple
+        ? g.lineas.map(l => l.referencia + " ×" + l.uds).join("  ·  ")
+        : (g.lineas[0]?.producto || ""),
+      almacen: g.esMultiple ? "" : (g.lineas[0]?.almacen || ""),
+      uds: g.totalUds,
+      operario: g.operario,
+      albaran: g.primerNumEntrega ? "#" + g.primerNumEntrega + (g.esMultiple ? "…" : "") + (g.albaran ? " · " + g.albaran : "") : (g.albaran || ""),
+      notas: "",
+      esMultiple: g.esMultiple,
+      grupoEntregaKey: g.esMultiple ? g.key : null,
+      lineas: g.lineas,
+    }))
+  ]
+  .filter(m => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return `${m.cliente} ${m.referencia} ${m.producto} ${m.albaran} ${m.operario}`.toLowerCase().includes(q);
+  })
+  .sort((a, b) => {
+    const da = a.fecha && a.fecha.match(/^\d{4}/) ? a.fecha : "1900";
+    const db = b.fecha && b.fecha.match(/^\d{4}/) ? b.fecha : "1900";
+    return db.localeCompare(da);
+  });
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", height:"100%" }}>
+      {/* Cabecera fija */}
+      <div style={{ padding:"20px 28px 0", flexShrink:0, background:"var(--bg)" }}>
+        <div className="section-header">
+          <div>
+            <div className="section-title">Histórico de movimientos</div>
+            <div className="section-sub">{movimientos.length} movimientos · {data.custodias.length} custodias · {data.entregas.length} entregas</div>
+          </div>
+        </div>
+        <div className="search-bar" style={{ paddingBottom:12, marginBottom:0 }}>
+          <input className="search-input" placeholder="🔍  Buscar por cliente, referencia, operario, albarán..." value={search} onChange={e => setSearch(e.target.value.toUpperCase())} />
+        </div>
+      </div>
+      {/* Items scrollables */}
+      <div style={{ flex:1, overflowY:"auto", padding:"0 28px 28px" }}>
+      {movimientos.length === 0 ? (
+        <div className="empty">
+          <div className="empty-icon">📋</div>
+          <div className="empty-title">Sin movimientos</div>
+          <div className="empty-sub">Los movimientos aparecerán aquí</div>
+        </div>
+      ) : movimientos.map(m => (
+        <div key={m.id} className="history-item">
+          {/* Col 1: tipo + fecha */}
+          <div>
+            <div style={{
+              display: "inline-block", padding: "2px 7px", borderRadius: 4,
+              fontFamily: "var(--mono,monospace)", fontSize: 9, fontWeight: 700,
+              background: m.tipo === "CUSTODIA" ? "rgba(46,125,50,0.15)" : "rgba(226,6,19,0.12)",
+              color: m.tipo === "CUSTODIA" ? "var(--green)" : "var(--accent)",
+              marginBottom: 3
+            }}>{m.tipo}</div>
+            <div className="history-date">{fmt(m.fecha)}</div>
+          </div>
+          {/* Col 2: operario */}
+          <div style={{ fontFamily: "var(--mono,monospace)", fontSize: 10, color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {m.operario && m.operario !== "Importado" ? m.operario : <span style={{ fontStyle: "italic", color: "var(--text-faint)" }}>—</span>}
+          </div>
+          {/* Col 3: albarán */}
+          <div style={{ fontFamily: "var(--mono,monospace)", fontSize: 10, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            color: m.albaran ? (m.tipo === "CUSTODIA" ? "var(--green)" : "var(--accent)") : "var(--text-faint)" }}>
+            {m.albaran || "—"}
+          </div>
+          {/* Col 4: cliente + producto */}
+          <div style={{ overflow: "hidden", minWidth: 0 }}>
+            <div className="history-client" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {m.cliente}
+
+            </div>
+            <div className="history-product" style={{ whiteSpace: m.esMultiple ? "normal" : "nowrap", overflow: "hidden", textOverflow: m.esMultiple ? "unset" : "ellipsis", fontSize: m.esMultiple ? 10 : 11 }}>
+              {m.esMultiple
+                ? m.producto  // ya viene con "REF × N · REF2 × M"
+                : <>{m.referencia && <span style={{ fontWeight:700, color:"var(--text)" }}>{m.referencia}</span>}{m.referencia && " · "}{m.producto}</>
+              }
+            </div>
+          </div>
+          {/* Col 5: unidades */}
+          <div style={{ textAlign: "right" }}>
+            <div className="history-uds" style={{ fontSize: 16, color: m.tipo === "CUSTODIA" ? "var(--green)" : "var(--accent)" }}>{m.uds}</div>
+            <div className="history-uds-label">uds.</div>
+          </div>
+          {/* Col 6: acciones */}
+          <div className="history-actions">
+            <button className="btn btn-ghost btn-sm btn-icon" title="Previsualizar documento"
+              onClick={e => { e.stopPropagation(); reprintMovimiento(m, data, false); }}
+              style={{ padding:"4px 7px", fontSize:14 }}>👁</button>
+            <button className="btn btn-ghost btn-sm btn-icon" title="Imprimir documento"
+              onClick={e => { e.stopPropagation(); reprintMovimiento(m, data, true); }}
+              style={{ padding:"4px 7px", fontSize:14 }}>🖨️</button>
+          </div>
+        </div>
+      ))}
+      </div>{/* end scroll body */}
+    </div>
+  );
+}
+
+// ─── CLIENTES ─────────────────────────────────────────────────────────────────
+function Clientes({ data }) {
+  const [search, setSearch] = useState("");
+
+  const map = {};
+  data.custodias.forEach(c => {
+    if (!map[c.cliente]) map[c.cliente] = { custodias: 0, pendientes: 0, almacenes: new Set() };
+    map[c.cliente].custodias++;
+    map[c.cliente].pendientes += c.udsTotales - c.udsEntregadas;
+    if (c.almacen && c.almacen !== "CONTINUACION") map[c.cliente].almacenes.add(c.almacen);
+  });
+
+  const sorted = Object.entries(map)
+    .filter(([cliente]) => !search || cliente.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => b[1].custodias - a[1].custodias);
+
+  return (
+    <div>
+      <div className="section-header">
+        <div>
+          <div className="section-title">Resumen por cliente</div>
+          <div className="section-sub">{sorted.length} clientes con custodias</div>
+        </div>
+      </div>
+      <div className="search-bar">
+        <input className="search-input" placeholder="🔍  Buscar cliente..." value={search} onChange={e => setSearch(e.target.value.toUpperCase())} />
+      </div>
+      {sorted.length === 0 ? (
+        <div className="empty"><div className="empty-icon">👥</div><div className="empty-title">Sin clientes</div></div>
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Cliente</th><th>Nº Custodias</th><th>Uds. pendientes</th><th>Almacenes</th><th>Estado</th></tr></thead>
+            <tbody>
+              {sorted.map(([cliente, info]) => (
+                <tr key={cliente}>
+                  <td style={{ fontWeight: 700 }}>{cliente}</td>
+                  <td>{info.custodias}</td>
+                  <td style={{ fontFamily: "var(--mono, monospace)", fontWeight: 700, color: "var(--green)" }}>{info.pendientes}</td>
+                  <td>{[...info.almacenes].map(a => <span key={a} className="tag tag-accent" style={{ marginRight: 4 }}>{a}</span>)}</td>
+                  <td>{info.pendientes > 0 ? <span className="tag tag-green">ACTIVO</span> : <span style={{color:"var(--text-dim)",fontSize:11}}>COMPLETO</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ─── PRINT CUSTODIAS ─────────────────────────────────────────────────────────
+function printCustodiasDoc(titulo, filas, allCustodias) {
+  const date = fmtNow();
+  const rows = filas.map(c => {
+    const pend = c.udsTotales - c.udsEntregadas;
+    return `<tr>
+      <td>${c.cliente}</td>
+      <td>${c.referencia}</td>
+      <td>${c.producto}</td>
+      <td>${c.almacen}</td>
+      <td style="text-align:right">${c.udsTotales}</td>
+      <td style="text-align:right">${c.udsEntregadas}</td>
+      <td style="text-align:right;font-weight:bold;color:#1a7f4b">${pend}</td>
+      <td>${fmt(c.fecha)}</td>
+    </tr>`;
+  }).join('');
+
+  const totalPend = filas.reduce((s,c) => s + (c.udsTotales - c.udsEntregadas), 0);
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>${titulo}</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:Arial,sans-serif; font-size:11px; color:#002D5A; padding:20px; }
+  .header { display:flex; justify-content:space-between; border-bottom:3px solid #E20613; padding-bottom:10px; margin-bottom:16px; }
+  .company { font-size:18px; font-weight:bold; }
+  .doc-title { text-align:right; }
+  .doc-title h2 { font-size:14px; color:#E20613; }
+  table { width:100%; border-collapse:collapse; }
+  th { background:#002D5A; color:#fff; padding:6px 8px; text-align:left; font-size:10px; }
+  td { padding:5px 8px; border-bottom:1px solid #eee; }
+  tr:nth-child(even) td { background:#f9f9f9; }
+  .total-row td { border-top:2px solid #002D5A; font-weight:bold; }
+  .footer { margin-top:20px; font-size:9px; color:#999; text-align:center; border-top:1px solid #ddd; padding-top:8px; }
+  @media print { body { padding:8px; } }
+</style></head><body>
+<div class="header">
+  <div><div class="company">RECAMBIOS IBIZA S.A.</div><div style="font-size:10px;color:#666">AD Parts Distribución</div></div>
+  <div class="doc-title"><h2>${titulo}</h2><div style="font-size:10px;color:#666">Fecha: ${date}</div></div>
+</div>
+<table>
+  <thead><tr><th>Cliente</th><th>Referencia</th><th>Producto</th><th>Almacén</th><th style="text-align:right">Compradas</th><th style="text-align:right">Entregadas</th><th style="text-align:right">Pendientes</th><th>Fecha compra</th></tr></thead>
+  <tbody>
+    ${rows}
+    <tr class="total-row"><td colspan="6" style="text-align:right">TOTAL PENDIENTES</td><td style="text-align:right;color:#1a7f4b">${totalPend}</td><td></td></tr>
+  </tbody>
+</table>
+<div class="footer">Recambios Ibiza S.A. · AD Parts Distribución · Generado automáticamente el ${date}</div>
+</body></html>`;
+
+  const win = window.open('', '_blank', 'width=900,height=700');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => win.print(), 500);
+}
+
+// ─── TAB CUSTODIAS ────────────────────────────────────────────────────────────
+function TabCustodias({ data }) {
+  const [filterCliente, setFilterCliente] = useState("");
+  const [filterRef,     setFilterRef]     = useState("");
+
+  const clientes = [...new Set(
+    data.custodias.filter(c => c.udsTotales - c.udsEntregadas > 0).map(c => c.cliente)
+  )].sort();
+
+  const referencias = [...new Set(
+    data.custodias.filter(c => c.udsTotales - c.udsEntregadas > 0).map(c => c.referencia)
+  )].sort();
+
+  const activas = data.custodias.filter(c => c.udsTotales - c.udsEntregadas > 0);
+
+  const porCliente = filterCliente
+    ? activas.filter(c => c.cliente === filterCliente)
+    : [];
+
+  const porRef = filterRef
+    ? activas.filter(c => c.referencia === filterRef)
+    : [];
+
+  const totalPorRef = porRef.reduce((s,c) => s + (c.udsTotales - c.udsEntregadas), 0);
+
+  const nada = !filterCliente && !filterRef;
+
+  return (
+    <div>
+      <div className="section-header">
+        <div>
+          <div className="section-title">Custodias activas</div>
+          <div className="section-sub">Consulta por cliente o por referencia de producto</div>
+        </div>
+      </div>
+
+      {/* Filtros */}
+      <div className="search-bar" style={{ marginBottom: 20 }}>
+        <select className="filter-select" style={{ flex: 1 }} value={filterCliente}
+          onChange={e => { setFilterCliente(e.target.value); setFilterRef(""); }}>
+          <option value="">— Filtrar por Cliente —</option>
+          {clientes.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select className="filter-select" style={{ flex: 1 }} value={filterRef}
+          onChange={e => { setFilterRef(e.target.value); setFilterCliente(""); }}>
+          <option value="">— Filtrar por Referencia —</option>
+          {referencias.map(r => <option key={r} value={r}>{r}</option>)}
+        </select>
+      </div>
+
+      {nada && (
+        <div className="empty">
+          <div className="empty-icon">📋</div>
+          <div className="empty-title">Selecciona un cliente o una referencia</div>
+          <div className="empty-sub">Puedes ver el stock activo por cliente o por referencia de producto</div>
+        </div>
+      )}
+
+      {/* Vista por CLIENTE */}
+      {filterCliente && (
+        <div>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+            <div>
+              <div className="section-title" style={{ fontSize:14 }}>{filterCliente}</div>
+              <div className="section-sub">{porCliente.length} líneas activas · {porCliente.reduce((s,c)=>s+(c.udsTotales-c.udsEntregadas),0)} uds. pendientes</div>
+            </div>
+            <div style={{ display:"flex", gap:8 }}>
+              <button className="btn btn-ghost" onClick={() => printCustodiasDoc(`Stock en custodia — ${filterCliente}`, porCliente)}>🖨️ Imprimir</button>
+              <button className="btn btn-primary" onClick={() => printCustodiasDoc(`Stock en custodia — ${filterCliente}`, porCliente)}>📄 Crear PDF</button>
+            </div>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Referencia</th><th>Producto</th><th>Almacén</th>
+                <th style={{textAlign:"right"}}>Compradas</th>
+                <th style={{textAlign:"right"}}>Entregadas</th>
+                <th style={{textAlign:"right"}}>Pendientes</th>
+                <th>Fecha</th>
+              </tr></thead>
+              <tbody>
+                {porCliente.map(c => {
+                  const pend = c.udsTotales - c.udsEntregadas;
+                  return (
+                    <tr key={c.id}>
+                      <td style={{fontFamily:"var(--mono,monospace)",fontWeight:700,color:"var(--text)"}}>{c.referencia}</td>
+                      <td>{c.producto}</td>
+                      <td><span className="tag tag-accent">{c.almacen}</span></td>
+                      <td style={{textAlign:"right"}}>{c.udsTotales}</td>
+                      <td style={{textAlign:"right"}}>{c.udsEntregadas}</td>
+                      <td style={{textAlign:"right",fontWeight:700,color:"var(--green)"}}>{pend}</td>
+                      <td style={{color:"var(--text-dim)"}}>{fmt(c.fecha)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Vista por REFERENCIA */}
+      {filterRef && (
+        <div>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+            <div>
+              <div className="section-title" style={{ fontSize:14 }}>Ref: {filterRef}</div>
+              <div className="section-sub">
+                {porRef.length > 0 ? porRef[0].producto : ""} · {porRef.length} clientes · <strong style={{color:"var(--green)"}}>{totalPorRef} uds. pendientes en total</strong>
+              </div>
+            </div>
+            <div style={{ display:"flex", gap:8 }}>
+              <button className="btn btn-ghost" onClick={() => printCustodiasDoc(`Stock custodiado — Ref. ${filterRef}`, porRef)}>🖨️ Imprimir</button>
+              <button className="btn btn-primary" onClick={() => printCustodiasDoc(`Stock custodiado — Ref. ${filterRef}`, porRef)}>📄 Crear PDF</button>
+            </div>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Cliente</th><th>Almacén</th>
+                <th style={{textAlign:"right"}}>Compradas</th>
+                <th style={{textAlign:"right"}}>Entregadas</th>
+                <th style={{textAlign:"right"}}>Pendientes</th>
+                <th>Fecha</th>
+              </tr></thead>
+              <tbody>
+                {porRef.map(c => {
+                  const pend = c.udsTotales - c.udsEntregadas;
+                  return (
+                    <tr key={c.id}>
+                      <td style={{fontWeight:700}}>{c.cliente}</td>
+                      <td><span className="tag tag-accent">{c.almacen}</span></td>
+                      <td style={{textAlign:"right"}}>{c.udsTotales}</td>
+                      <td style={{textAlign:"right"}}>{c.udsEntregadas}</td>
+                      <td style={{textAlign:"right",fontWeight:700,color:"var(--green)"}}>{pend}</td>
+                      <td style={{color:"var(--text-dim)"}}>{fmt(c.fecha)}</td>
+                    </tr>
+                  );
+                })}
+                <tr style={{borderTop:"2px solid var(--border)"}}>
+                  <td colSpan="4" style={{fontWeight:700,textAlign:"right",fontFamily:"var(--mono,monospace)",fontSize:11}}>TOTAL PENDIENTES</td>
+                  <td style={{textAlign:"right",fontWeight:700,color:"var(--green)",fontFamily:"var(--mono,monospace)"}}>{totalPorRef}</td>
+                  <td></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ─── PRINT ENTREGAS DOC ───────────────────────────────────────────────────────
+function printEntregasDoc(titulo, filas) {
+  const date = fmtNow();
+  const rows = filas.map(e => `<tr>
+    <td style="font-weight:bold">${e.numEntrega || "—"}</td>
+    <td>${fmt(e.fecha)}</td>
+    <td>${e.cliente || "—"}</td>
+    <td>${e.referencia || "—"}</td>
+    <td>${e.producto || "—"}</td>
+    <td>${e.almacen || "—"}</td>
+    <td style="text-align:right;font-weight:bold;color:#E20613">${e.uds}</td>
+    <td>${e.operario || "—"}</td>
+    <td>${e.albaran || "—"}</td>
+  </tr>`).join('');
+  const total = filas.reduce((s, e) => s + e.uds, 0);
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>${titulo}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;font-size:10px;color:#002D5A;padding:16px}
+  .header{display:flex;justify-content:space-between;border-bottom:3px solid #E20613;padding-bottom:10px;margin-bottom:14px}
+  .company{font-size:16px;font-weight:bold}
+  .doc-title h2{font-size:13px;color:#E20613;text-align:right}
+  table{width:100%;border-collapse:collapse}
+  th{background:#002D5A;color:#fff;padding:5px 7px;text-align:left;font-size:9px}
+  td{padding:4px 7px;border-bottom:1px solid #eee}
+  tr:nth-child(even) td{background:#f9f9f9}
+  .total-row td{border-top:2px solid #002D5A;font-weight:bold}
+  .footer{margin-top:16px;font-size:9px;color:#999;text-align:center;border-top:1px solid #ddd;padding-top:8px}
+  @media print{body{padding:8px}}
+</style></head><body>
+<div class="header">
+  <div><div class="company">RECAMBIOS IBIZA S.A.</div><div style="font-size:9px;color:#666">AD Parts Distribución</div></div>
+  <div class="doc-title"><h2>${titulo}</h2><div style="font-size:9px;color:#666;text-align:right">Fecha: ${date}</div></div>
+</div>
+<table>
+  <thead><tr><th>Nº Entrega</th><th>Fecha</th><th>Cliente</th><th>Referencia</th><th>Producto</th><th>Almacén</th><th>Uds.</th><th>Operario</th><th>Alb. Skrit</th></tr></thead>
+  <tbody>
+    ${rows}
+    <tr class="total-row"><td colspan="6" style="text-align:right">TOTAL UNIDADES</td><td style="text-align:right;color:#E20613">${total}</td><td colspan="2"></td></tr>
+  </tbody>
+</table>
+<div class="footer">Recambios Ibiza S.A. · AD Parts Distribución · Generado el ${date}</div>
+</body></html>`;
+  const win = window.open("", "_blank", "width=950,height=700");
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => win.print(), 400);
+}
+
+// ─── TAB ENTREGAS ─────────────────────────────────────────────────────────────
+function TabEntregas({ data }) {
+  const [filterCliente, setFilterCliente] = useState("");
+  const [filterRef,     setFilterRef]     = useState("");
+
+  // Enriquecer entregas con datos de custodia
+  const entregasRicas = data.entregas.map(e => {
+    const c = data.custodias.find(x => x.id === e.custodiaId) || {};
+    return { ...e, cliente: c.cliente, referencia: c.referencia, producto: c.producto, almacen: c.almacen };
+  });
+
+  const clientes = [...new Set(entregasRicas.map(e => e.cliente).filter(Boolean))].sort();
+  const referencias = [...new Set(entregasRicas.map(e => e.referencia).filter(Boolean))].sort();
+
+  // Agrupar para vista por cliente
+  const gruposCliente = filterCliente
+    ? agruparEntregas(data.entregas.filter(e => {
+        const c = data.custodias.find(x => x.id === e.custodiaId);
+        return c?.cliente === filterCliente;
+      }), data.custodias)
+    : [];
+
+  const porCliente = gruposCliente;
+
+  const porRef = filterRef
+    ? [...entregasRicas].filter(e => e.referencia === filterRef)
+        .sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""))
+    : [];
+
+  const nada = !filterCliente && !filterRef;
+  const totalCliente = gruposCliente.reduce((s, g) => s + g.totalUds, 0);
+  const totalRef = porRef.reduce((s, e) => s + e.uds, 0);
+
+  const EntregaTable = ({ filas, total }) => (
+    <div className="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Nº Entrega</th><th>Fecha</th><th>Referencia</th><th>Producto</th>
+          <th>Almacén</th><th style={{textAlign:"right"}}>Uds.</th>
+          <th>Operario</th><th>Alb. Skrit</th>
+        </tr></thead>
+        <tbody>
+          {filas.map(e => (
+            <tr key={e.id}>
+              <td style={{fontFamily:"var(--mono,monospace)",fontWeight:700,color:"var(--accent)"}}>{e.numEntrega || "—"}</td>
+              <td style={{color:"var(--text-dim)"}}>{fmt(e.fecha)}</td>
+              <td style={{fontFamily:"var(--mono,monospace)",fontWeight:700,color:"var(--text)"}}>{e.referencia}</td>
+              <td style={{maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.producto}</td>
+              <td><span className="tag tag-accent">{e.almacen}</span></td>
+              <td style={{textAlign:"right",fontWeight:700,color:"var(--accent)"}}>{e.uds}</td>
+              <td style={{color:"var(--text-dim)"}}>{e.operario || "—"}</td>
+              <td style={{color:"var(--text-dim)"}}>{e.albaran || "—"}</td>
+            </tr>
+          ))}
+          <tr style={{borderTop:"2px solid var(--border)"}}>
+            <td colSpan="5" style={{fontFamily:"var(--mono,monospace)",fontSize:11,fontWeight:700,textAlign:"right"}}>TOTAL</td>
+            <td style={{textAlign:"right",fontWeight:700,color:"var(--accent)",fontFamily:"var(--mono,monospace)"}}>{total}</td>
+            <td colSpan="2"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+
+
+  // ─── Tabla de grupos de entrega ────────────────────────────────────────────
+  const GruposTable = ({ grupos, data }) => (
+    <div className="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Nº Entrega</th><th>Fecha</th><th>Referencias / Productos</th>
+          <th style={{textAlign:"right",width:60}}>Uds.</th>
+          <th>Operario</th><th>Alb. Skrit</th><th style={{width:80}}>Imprimir</th>
+        </tr></thead>
+        <tbody>
+          {grupos.map(g => (
+            <tr key={g.key}>
+              <td style={{fontFamily:"var(--mono,monospace)",fontWeight:700,color:"var(--accent)"}}>
+                {g.primerNumEntrega ? "#"+g.primerNumEntrega+(g.esMultiple?"…":"") : "—"}
+              </td>
+              <td style={{color:"var(--text-dim)"}}>{fmt(g.fecha)}</td>
+
+              <td style={{fontSize:11}}>
+                {g.esMultiple
+                  ? <div>{g.lineas.map((l,i) => <div key={i} style={{color:i===0?"var(--text)":"var(--text-dim)",fontFamily:"var(--mono,monospace)",fontSize:10}}><span style={{fontWeight:700}}>{l.referencia}</span>{" · "}{l.producto}{" · "}<span style={{color:"var(--accent)"}}>{l.uds} ud.</span></div>)}</div>
+                  : <><span style={{fontWeight:700,color:"var(--text)",fontFamily:"var(--mono,monospace)"}}>{g.lineas[0]?.referencia}</span>{" · "}{g.lineas[0]?.producto}</>
+                }
+              </td>
+              <td style={{textAlign:"right",fontWeight:700,color:"var(--accent)"}}>{g.totalUds}</td>
+              <td style={{color:"var(--text-dim)"}}>{g.operario||"—"}</td>
+              <td style={{color:"var(--text-dim)"}}>{g.albaran||"—"}</td>
+              <td>
+                <button className="btn btn-ghost btn-sm" style={{padding:"4px 8px"}}
+                  onClick={() => {
+                    if (g.esMultiple) {
+                      const entregasGrupo = data.entregas.filter(e => e.grupoEntrega === g.key);
+                      const lineas = entregasGrupo.map(e => ({ custodiaId: e.custodiaId, uds: e.uds }));
+                      printMultiDeliveryDoc(g.cliente, lineas, data.custodias, g.operario, g.albaran);
+                    } else {
+                      const entrega = data.entregas.find(e => e.id === g.lineas[0]?.id);
+                      const custodia = data.custodias.find(c => c.id === entrega?.custodiaId);
+                      if (entrega && custodia) printDeliveryDoc(custodia, entrega, data.custodias);
+                    }
+                  }}>🖨️</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  return (
+    <div>
+      <div className="section-header">
+        <div>
+          <div className="section-title">Entregas realizadas</div>
+          <div className="section-sub">Consulta por cliente o por referencia de producto</div>
+        </div>
+      </div>
+      <div className="search-bar" style={{ marginBottom: 20 }}>
+        <select className="filter-select" style={{ flex: 1 }} value={filterCliente}
+          onChange={e => { setFilterCliente(e.target.value); setFilterRef(""); }}>
+          <option value="">— Filtrar por Cliente —</option>
+          {clientes.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select className="filter-select" style={{ flex: 1 }} value={filterRef}
+          onChange={e => { setFilterRef(e.target.value); setFilterCliente(""); }}>
+          <option value="">— Filtrar por Referencia —</option>
+          {referencias.map(r => <option key={r} value={r}>{r}</option>)}
+        </select>
+      </div>
+
+      {nada && (
+        <div className="empty">
+          <div className="empty-icon">🚚</div>
+          <div className="empty-title">Selecciona un cliente o una referencia</div>
+          <div className="empty-sub">Consulta el historial de entregas por cliente o por producto</div>
+        </div>
+      )}
+
+      {filterCliente && (
+        <div>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+            <div>
+              <div className="section-title" style={{ fontSize:14 }}>{filterCliente}</div>
+              <div className="section-sub">{gruposCliente.length} operaciones · {totalCliente} unidades entregadas en total</div>
+            </div>
+            <div style={{ display:"flex", gap:8 }}>
+              <button className="btn btn-ghost" onClick={() => printEntregasDoc(`Entregas — ${filterCliente}`, porCliente)}>🖨️ Imprimir</button>
+              <button className="btn btn-primary" onClick={() => printEntregasDoc(`Entregas — ${filterCliente}`, porCliente)}>📄 Crear PDF</button>
+            </div>
+          </div>
+          <GruposTable grupos={gruposCliente} data={data} />
+        </div>
+      )}
+
+      {filterRef && (
+        <div>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+            <div>
+              <div className="section-title" style={{ fontSize:14 }}>Ref: {filterRef}</div>
+              <div className="section-sub">
+                {porRef[0]?.producto} · {porRef.length} entregas · <strong style={{color:"var(--accent)"}}>{totalRef} uds. entregadas en total</strong>
+              </div>
+            </div>
+            <div style={{ display:"flex", gap:8 }}>
+              <button className="btn btn-ghost" onClick={() => printEntregasDoc(`Entregas — Ref. ${filterRef}`, porRef)}>🖨️ Imprimir</button>
+              <button className="btn btn-primary" onClick={() => printEntregasDoc(`Entregas — Ref. ${filterRef}`, porRef)}>📄 Crear PDF</button>
+            </div>
+          </div>
+          <EntregaTable filas={porRef} total={totalRef} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
+// ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
+const CHANGELOG = [
+  { v:"v7.1", d:"Junio 2026", items:[
+    "Nueva pestaña Productos: stock agregado por referencia con edición masiva",
+    "Panel de Ayuda con Manual embebido, Changelog y Acerca de",
+    "Botones 👁 previsualizar y 🖨️ imprimir en cada fila del Histórico",
+    "Texto en mayúsculas automático en todos los campos",
+    "Impresión a dos páginas para papel serigrafiado (portada + detalle al dorso)",
+    "Colores mejorados en modal Nueva Entrega (verde para disponibles y seleccionados)",
+    "Fix auto-completado de referencias (case-insensitive)",
+    "Columnas más compactas en tabla Panel de Control",
+    "Edición de entregas desde vista Completadas en Panel de Control",
+  ]},
+  { v:"v7.0", d:"Mayo 2026", items:[
+    "Reset de base de datos — inicio limpio sin datos de ejemplo",
+    "Operario obligatorio en custodias y entregas",
+    "Numeración automática de entregas (000001, 000002...)",
+    "Pestaña Entregas: filtro por cliente/referencia con PDF",
+    "Autocompletado de referencias en Nueva Custodia",
+    "Colores verde/rojo en columna Stock Actual",
+  ]},
+  { v:"v6", d:"Mayo 2026", items:[
+    "Filtro cliente obligatorio para mostrar stock",
+    "Estado 'Activas' automático al seleccionar cliente",
+    "Favicon de caja de cartón en pestaña del navegador",
+    "Responsive móvil mejorado",
+  ]},
+  { v:"v5", d:"Mayo 2026", items:[
+    "Header sticky en todas las pestañas",
+    "Nueva pestaña Custodias con PDF por cliente y referencia",
+    "Histórico de movimientos unificado (custodias + entregas)",
+    "Toggle Claro/Oscuro rectangular con colores de marca",
+    "Soporte móvil responsive",
+  ]},
+  { v:"v4", d:"Mayo 2026", items:[
+    "Corrección crítica de URL Supabase (wr vs wn)",
+    "Fix race condition en sincronización: timestamp updated_at",
+    "Polling inteligente que no sobreescribe cambios locales",
+  ]},
+  { v:"v3", d:"Mayo 2026", items:[
+    "Conexión a Supabase para base de datos compartida en tiempo real",
+    "Sincronización entre todos los operarios cada 10 segundos",
+    "Publicación en Netlify como app web accesible desde cualquier dispositivo",
+  ]},
+  { v:"v2", d:"Mayo 2026", items:[
+    "Conversión de artefacto React a HTML standalone para Netlify",
+    "Almacenamiento en localStorage del navegador",
+  ]},
+  { v:"v1", d:"Mayo 2026", items:[
+    "Versión inicial como artefacto React en Claude.ai",
+    "Importación automática de 132 custodias activas desde el Excel original",
+    "Dashboard con KPIs, filtros, entregas, préstamos e historial básico",
+  ]},
+];
+
+const MANUAL_SECTIONS = [
+  { t:"Panel de Control", c:"Selecciona primero un Cliente para ver su stock. El estado por defecto es 'Activas'. Cambia a 'Completadas' para ver las entregas realizadas y poder editarlas. Los botones ✏️ editan la custodia y 🗑️ la eliminan (con confirmación)." },
+  { t:"Nueva Custodia", c:"Pulsa '+ Nueva custodia'. Rellena Cliente (*), Referencia (*) y Unidades (*). El campo Responsable/Operario es obligatorio. La referencia sugiere productos ya registrados — al seleccionarla, la descripción se rellena automáticamente." },
+  { t:"Nueva Entrega", c:"Usa '🚚 Nueva entrega' para entregar varios productos a la vez. 3 pasos: 1) Selecciona cliente, 2) Introduce cantidades por línea, 3) Confirma con fecha y operario (obligatorio). Se genera un documento de 2 páginas para imprimir." },
+  { t:"Pestaña Custodias", c:"Filtra por cliente o referencia para ver el stock activo con botones Imprimir y Crear PDF. Ideal para dar información rápida sobre lo que tiene un cliente en almacén." },
+  { t:"Pestaña Entregas", c:"Filtra por cliente o referencia para ver todas las entregas realizadas, con su número de entrega automático (000001...). Botones Imprimir y PDF disponibles." },
+  { t:"Pestaña Productos", c:"Vista de stock agrupada por referencia y almacén. Filtra por referencia o descripción. Permite editar referencia y descripción de forma masiva (aplica a todas las custodias con esa referencia). Muestra alerta ⚠️ si hay préstamos activos de esa referencia." },
+  { t:"Histórico", c:"Timeline de todos los movimientos (custodias en verde, entregas en rojo), ordenado del más reciente al más antiguo. Usa los botones 👁 y 🖨️ de cada fila para previsualizar o reimprimir el documento original." },
+  { t:"Préstamos temporales", c:"Botón ⚠️ naranja en cada fila activa. Registra que se tomaron unidades del stock de un cliente para uso urgente. Aparece como alerta roja parpadeante en el dashboard hasta que se salda." },
+  { t:"Sincronización", c:"Los datos se guardan en Supabase cada vez que realizas un cambio (ves 'Guardando...' brevemente). Cada 10 segundos la app comprueba si otro operario ha hecho cambios. Si el proyecto Supabase lleva más de 1 semana sin actividad puede pausarse — entra al dashboard de Supabase para reactivarlo." },
+];
+
+function PanelAyuda({ onClose }) {
+  const [tab, setTab] = useState('manual');
+  return (
+    <div className="ayuda-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="ayuda-panel">
+        <div className="ayuda-header">
+          <div style={{ fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:16 }}>❓ Ayuda</div>
+          <button className="btn btn-ghost btn-sm" onClick={onClose}>✕ Cerrar</button>
+        </div>
+        <div className="ayuda-tabs">
+          {[['manual','📖 Manual'],['changelog','🕐 Versiones'],['about','ℹ️ Acerca de']].map(([id,label])=>(
+            <button key={id} className={"ayuda-tab" + (tab===id?" active":"")} onClick={()=>setTab(id)}>{label}</button>
+          ))}
+        </div>
+        <div className="ayuda-body">
+          {tab === 'manual' && (
+            <div>
+              {MANUAL_SECTIONS.map(s=>(
+                <div key={s.t} className="ayuda-section">
+                  <h3>{s.t}</h3>
+                  <p>{s.c}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          {tab === 'changelog' && (
+            <div>
+              {CHANGELOG.map(c=>(
+                <div key={c.v} className="version-card">
+                  <div><span className="version-num">{c.v}</span><span className="version-date">{c.d}</span></div>
+                  <ul style={{paddingLeft:14,marginTop:6}}>
+                    {c.items.map((item,i)=><li key={i} className="version-li">{item}</li>)}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+          {tab === 'about' && (
+            <div>
+              <div className="about-logo">
+                <LogoAD size={60} color="var(--accent)" />
+              </div>
+              <div style={{textAlign:'center'}}>
+                <div className="about-version">v7.1</div>
+                <div className="about-line">Gestor de Stocks y Custodias</div>
+                <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
+              </div>
+              <div style={{marginTop:24,background:'var(--surface2)',borderRadius:8,padding:'16px 20px'}}>
+                <div className="about-kraft">Krafted by <span>Yakoba Moreno</span></div>
+                <div className="about-kraft" style={{marginTop:4}}>Designed in <span className="blue" style={{color:'#002D5A'}}>Claude Code</span></div>
+                <div className="about-kraft" style={{marginTop:4,fontSize:10,opacity:0.6}}>Anthropic Claude Sonnet 4 · Mayo–Junio 2026</div>
+              </div>
+              <div style={{marginTop:16,fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:'var(--text-faint)',textAlign:'center'}}>
+                Base de datos: Supabase · Publicación: Netlify
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ─── AGRUPAR ENTREGAS (múltiples vs simples) ─────────────────────────────────
+function agruparEntregas(entregas, custodias) {
+  const grupos = {};
+  // Ordenar por fecha desc primero
+  const sorted = [...entregas].sort((a,b) => (b.fecha||"").localeCompare(a.fecha||""));
+  sorted.forEach(e => {
+    const key = e.grupoEntrega || e.id; // sin grupo = cada entrega es su propio grupo
+    const c = custodias.find(x => x.id === e.custodiaId) || {};
+    if (!grupos[key]) {
+      grupos[key] = {
+        key,
+        esMultiple: false, // se actualiza abajo si hay >1 línea
+        fecha: e.fecha || "",
+        operario: e.operario || "",
+        albaran: e.albaran || "",
+        cliente: c.cliente || "Cliente eliminado",
+        lineas: [],
+        totalUds: 0,
+        primerNumEntrega: e.numEntrega || "",
+        // guardar ids para reimpresión
+        entregaIds: [],
+      };
+    }
+    grupos[key].lineas.push({
+      custodiaId: e.custodiaId,
+      referencia: c.referencia || "",
+      producto: c.producto || "",
+      almacen: c.almacen || "",
+      uds: e.uds,
+      numEntrega: e.numEntrega || "",
+      id: e.id,
+    });
+    grupos[key].totalUds += e.uds;
+    grupos[key].entregaIds.push(e.id);
+    if (grupos[key].lineas.length > 1) grupos[key].esMultiple = true;
+  });
+  return Object.values(grupos).sort((a,b) => (b.fecha||"").localeCompare(a.fecha||""));
+}
+
+// ─── PRINT PRODUCTOS ─────────────────────────────────────────────────────────
+function printProductosDoc(productos) {
+  const date = fmtNow();
+  let rows = '';
+  productos.forEach(p => {
+    Object.entries(p.almacenes).forEach(([alm, uds], i) => {
+      rows += '<tr>'
+        + (i === 0 ? '<td rowspan="' + Object.keys(p.almacenes).length + '" style="font-weight:bold;vertical-align:top">' + p.referencia + '</td>'
+                   + '<td rowspan="' + Object.keys(p.almacenes).length + '" style="vertical-align:top">' + p.producto + '</td>' : '')
+        + '<td>' + alm + '</td>'
+        + '<td style="text-align:right;font-weight:bold;color:#1a7f4b">' + uds + '</td>'
+        + (i === 0 ? '<td rowspan="' + Object.keys(p.almacenes).length + '" style="text-align:right;font-weight:bold;color:#E20613;vertical-align:top">' + p.totalPend + '</td>' : '')
+        + (p.tieneDeuda && i === 0 ? '<td rowspan="' + Object.keys(p.almacenes).length + '" style="color:#ff8c00;vertical-align:top">⚠️ Préstamo activo</td>' : (i === 0 ? '<td rowspan="' + Object.keys(p.almacenes).length + '"></td>' : ''))
+        + '</tr>';
+    });
+  });
+  const totalUds = productos.reduce((s,p)=>s+p.totalPend,0);
+  const css = '*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:10px;color:#002D5A;padding:16px}.header{display:flex;justify-content:space-between;border-bottom:3px solid #E20613;padding-bottom:10px;margin-bottom:14px}.company{font-size:16px;font-weight:bold}table{width:100%;border-collapse:collapse}th{background:#002D5A;color:#fff;padding:5px 7px;text-align:left;font-size:9px}td{padding:4px 7px;border-bottom:1px solid #eee;border-left:1px solid #f0f0f0}.total{border-top:2px solid #002D5A;font-weight:bold}.footer{margin-top:14px;font-size:9px;color:#999;text-align:center;border-top:1px solid #ddd;padding-top:8px}@media print{body{padding:8px}}';
+  const html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Stock de Productos</title><style>' + css + '</style></head><body>'
+    + '<div class="header"><div><div class="company">RECAMBIOS IBIZA S.A.</div><div style="font-size:9px;color:#666">AD Parts Distribucion</div></div>'
+    + '<div style="text-align:right"><div style="font-size:13px;font-weight:bold;color:#E20613">LISTADO DE STOCK EN CUSTODIA</div><div style="font-size:9px;color:#666">Fecha: ' + date + '</div></div></div>'
+    + '<table><thead><tr><th>Referencia</th><th>Producto</th><th>Almacen</th><th style="text-align:right">Uds.</th><th style="text-align:right">Total</th><th>Alertas</th></tr></thead>'
+    + '<tbody>' + rows
+    + '<tr class="total"><td colspan="4" style="text-align:right">TOTAL UNIDADES EN STOCK</td><td style="text-align:right;color:#E20613">' + totalUds + '</td><td></td></tr>'
+    + '</tbody></table>'
+    + '<div class="footer">Recambios Ibiza S.A. &middot; AD Parts &middot; ' + date + '</div></body></html>';
+  const win = window.open('', '_blank', 'width=900,height=700');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => win.print(), 400);
+}
+
+// ─── TAB PRODUCTOS ────────────────────────────────────────────────────────────
+function TabProductos({ data, onBulkUpdateRef }) {
+  const [search, setSearch] = useState('');
+  const [editando, setEditando] = useState(null); // {refOld, referencia, producto}
+  const [confirmEdit, setConfirmEdit] = useState(false);
+
+  // Prestamos activos por custodia
+  const prestamosActivos = new Set(
+    (data.prestamos || []).filter(p => !p.saldado).map(p => p.custodiaId)
+  );
+
+  // Agrupar custodias activas por referencia
+  const refMap = {};
+  data.custodias.filter(c => c.udsTotales - c.udsEntregadas > 0).forEach(c => {
+    const key = c.referencia;
+    if (!refMap[key]) refMap[key] = { referencia: c.referencia, producto: c.producto, almacenes: {}, totalPend: 0, tieneDeuda: false, custodias: [] };
+    const pend = c.udsTotales - c.udsEntregadas;
+    refMap[key].almacenes[c.almacen] = (refMap[key].almacenes[c.almacen] || 0) + pend;
+    refMap[key].totalPend += pend;
+    if (prestamosActivos.has(c.id)) refMap[key].tieneDeuda = true;
+    refMap[key].custodias.push(c);
+  });
+
+  const productos = Object.values(refMap)
+    .filter(p => {
+      if (!search) return true;
+      const q = search.toLowerCase();
+      return p.referencia.toLowerCase().includes(q) || p.producto.toLowerCase().includes(q);
+    })
+    .sort((a, b) => b.totalPend - a.totalPend);
+
+  const totalGeneral = productos.reduce((s,p)=>s+p.totalPend, 0);
+
+  return (
+    <div>
+      <div className="section-header">
+        <div>
+          <div className="section-title">Stock por producto</div>
+          <div className="section-sub">{productos.length} referencias en stock · {totalGeneral} unidades totales</div>
+        </div>
+        <button className="btn btn-ghost" onClick={() => printProductosDoc(productos)}>🖨️ Imprimir listado</button>
+      </div>
+      <div className="search-bar" style={{ marginBottom: 16 }}>
+        <input className="search-input" placeholder="🔍  Buscar por referencia o descripción..." value={search}
+          onChange={e => setSearch(e.target.value)} style={{ textTransform: 'none' }} />
+      </div>
+      {productos.length === 0 ? (
+        <div className="empty">
+          <div className="empty-icon">📦</div>
+          <div className="empty-title">Sin productos en stock</div>
+          <div className="empty-sub">No hay custodias activas que coincidan</div>
+        </div>
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Referencia</th><th>Descripción</th><th>Almacén</th>
+              <th style={{textAlign:"right",width:70}}>Uds.</th>
+              <th style={{textAlign:"right",width:70}}>Total</th>
+              <th style={{width:100}}>Alertas</th>
+              <th style={{width:80}}>Editar</th>
+            </tr></thead>
+            <tbody>
+              {productos.map(p => (
+                Object.entries(p.almacenes).map(([alm, uds], i) => (
+                  <tr key={p.referencia + alm}>
+                    {i === 0 && <td rowSpan={Object.keys(p.almacenes).length} style={{ fontFamily:"var(--mono,monospace)", fontWeight:700, color:"var(--text)", verticalAlign:"middle" }}>{p.referencia}</td>}
+                    {i === 0 && <td rowSpan={Object.keys(p.almacenes).length} style={{ verticalAlign:"middle" }}>{p.producto}</td>}
+                    <td><span className="tag tag-accent">{alm}</span></td>
+                    <td style={{ textAlign:"right", fontWeight:700, color:"var(--green)" }}>{Object.keys(p.almacenes).length > 1 ? uds : ""}</td>
+                    {i === 0 && <td rowSpan={Object.keys(p.almacenes).length} style={{ textAlign:"right", fontWeight:700, color:"var(--green)", verticalAlign:"middle", fontSize:15 }}>{p.totalPend}</td>}
+                    {i === 0 && <td rowSpan={Object.keys(p.almacenes).length} style={{ verticalAlign:"middle" }}>
+                      {p.tieneDeuda && <span className="tag tag-orange">⚠️ Préstamo activo</span>}
+                    </td>}
+                    {i === 0 && <td rowSpan={Object.keys(p.almacenes).length} style={{ verticalAlign:"middle" }}>
+                      <button className="btn btn-sm" style={{ background:"rgba(0,45,90,0.1)", color:"var(--blue2)", border:"1px solid rgba(0,45,90,0.2)" }}
+                        onClick={() => setEditando({ refOld: p.referencia, referencia: p.referencia, producto: p.producto })}>
+                        ✏️ Editar
+                      </button>
+                    </td>}
+                  </tr>
+                ))
+              ))}
+              <tr style={{ borderTop:"2px solid var(--border)", background:"var(--surface2)" }}>
+                <td colSpan="4" style={{ fontFamily:"var(--mono,monospace)", fontWeight:700, textAlign:"right", fontSize:11 }}>TOTAL GENERAL</td>
+                <td style={{ textAlign:"right", fontWeight:700, color:"var(--green)", fontFamily:"var(--mono,monospace)", fontSize:15 }}>{totalGeneral}</td>
+                <td colSpan="2"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Modal editar referencia/descripción */}
+      {editando && !confirmEdit && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setEditando(null)}>
+          <div className="modal" style={{ maxWidth: 480 }}>
+            <div className="modal-title">✏️ Editar producto</div>
+            <div className="modal-sub">Los cambios se aplicarán a todas las custodias con esta referencia</div>
+            <div className="alert" style={{ background:"rgba(255,140,0,0.08)", border:"1px solid rgba(255,140,0,0.25)", color:"#ff8c00", marginBottom:20 }}>
+              ⚠️ Se actualizarán todas las custodias con la referencia <strong>{editando.refOld}</strong>
+            </div>
+            <div className="form-grid cols-1">
+              <div className="form-group">
+                <label>Referencia</label>
+                <input value={editando.referencia} onChange={e => setEditando(prev => ({...prev, referencia: e.target.value.toUpperCase()}))} />
+              </div>
+              <div className="form-group">
+                <label>Descripción del producto</label>
+                <input value={editando.producto} onChange={e => setEditando(prev => ({...prev, producto: e.target.value.toUpperCase()}))} />
+              </div>
+            </div>
+            <div className="form-actions">
+              <button className="btn btn-ghost" onClick={() => setEditando(null)}>Cancelar</button>
+              <button className="btn" style={{ background:"#ff8c00", color:"#fff" }} onClick={() => setConfirmEdit(true)}>Guardar cambios</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {editando && confirmEdit && (
+        <ModalConfirmar
+          titulo="¿Confirmar cambio masivo?"
+          tipo="warn"
+          labelConfirm="✓ Aplicar a todas"
+          mensaje={"Referencia: " + editando.refOld + " → " + editando.referencia}
+          detalles={"Descripción: " + editando.producto}
+          onConfirm={() => { onBulkUpdateRef(editando.refOld, editando.referencia, editando.producto); setEditando(null); setConfirmEdit(false); }}
+          onClose={() => setConfirmEdit(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── APP ──────────────────────────────────────────────────────────────────────
+function App() {
+  const [data, setData] = useState(null);
+  const [tab, setTab] = useState("dashboard");
+  const [modal, setModal] = useState(null);
+  const [selectedCustodia, setSelectedCustodia] = useState(null);
+  const [prestamoTarget, setPrestamoTarget] = useState(null);
+  const [showNuevaEntrega, setShowNuevaEntrega] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
+  const [editEntregaTarget, setEditEntregaTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [saveStatus, setSaveStatus] = useState("saved");
+  const [showAyuda, setShowAyuda] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('ri-theme') !== 'light');
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
+    localStorage.setItem('ri-theme', darkMode ? 'dark' : 'light');
+  }, [darkMode]);
+
+  useEffect(() => {
+    loadData().then(d => setData(d));
+    // Polling cada 10 segundos — solo actualiza si otro usuario cambió algo
+    const interval = setInterval(() => pollRemote(setData), 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const persist = useCallback(async (newData) => {
+    setSaveStatus("saving");
+    await saveData(newData);
+    setSaveStatus("saved");
+  }, []);
+
+  const clientes = data ? [...new Set(data.custodias.map(c => c.cliente))].sort() : [];
+
+  const handleNuevaCustodia = (custodia) => {
+    const nd = { ...data, custodias: [...data.custodias, custodia] };
+    setData(nd); persist(nd); setModal(null);
+  };
+
+  const handleEntrega = (entregaData) => {
+    const numE = formatNumE(getNextNumEntrega(data.entregas));
+    const entregaConNum = { ...entregaData, numEntrega: numE };
+    const nc = data.custodias.map(c => c.id === entregaData.custodiaId ? { ...c, udsEntregadas: c.udsEntregadas + entregaData.uds } : c);
+    const nd = { ...data, custodias: nc, entregas: [...data.entregas, entregaConNum] };
+    setData(nd); persist(nd); setSelectedCustodia(null);
+  };
+
+  const handleNuevaEntrega = (nuevasEntregas) => {
+    let custodias = [...data.custodias];
+    let nextNum = getNextNumEntrega(data.entregas);
+    const grupoId = uid(); // ID compartido para identificar la entrega múltiple
+    const numeradas = nuevasEntregas.map(e => {
+      const n = { ...e, numEntrega: formatNumE(nextNum++), grupoEntrega: grupoId };
+      custodias = custodias.map(c => c.id === e.custodiaId ? { ...c, udsEntregadas: c.udsEntregadas + e.uds } : c);
+      return n;
+    });
+    const nd = { ...data, custodias, entregas: [...data.entregas, ...numeradas] };
+    setData(nd); persist(nd); setShowNuevaEntrega(false);
+  };
+
+  const handlePrestamo = (prestamoData) => {
+    // Préstamo: incrementa udsEntregadas (físicamente salen) + guarda deuda
+    const nc = data.custodias.map(c => c.id === prestamoData.custodiaId ? { ...c, udsEntregadas: c.udsEntregadas + prestamoData.uds } : c);
+    const nd = { ...data, custodias: nc, prestamos: [...(data.prestamos || []), prestamoData] };
+    setData(nd); persist(nd); setPrestamoTarget(null);
+  };
+
+  const handleSaldarDeuda = (prestamoId) => {
+    const np = (data.prestamos || []).map(p => p.id === prestamoId ? { ...p, saldado: true } : p);
+    const nd = { ...data, prestamos: np };
+    setData(nd); persist(nd);
+  };
+
+  const handleEditar = (updated) => {
+    const nd = { ...data, custodias: data.custodias.map(c => c.id === updated.id ? updated : c) };
+    setData(nd); persist(nd); setEditTarget(null);
+  };
+
+  const handleBulkUpdateRef = (refOld, refNew, productoNew) => {
+    const nc = data.custodias.map(c =>
+      c.referencia === refOld ? { ...c, referencia: refNew, producto: productoNew } : c
+    );
+    const nd = { ...data, custodias: nc };
+    setData(nd); persist(nd);
+  };
+
+  const handleEditarEntrega = (entregaActualizada) => {
+    const entregaOriginal = data.entregas.find(e => e.id === entregaActualizada.id);
+    const difUds = Number(entregaActualizada.uds) - Number(entregaOriginal.uds);
+    const nuevasCustodias = data.custodias.map(c =>
+      c.id === entregaActualizada.custodiaId
+        ? { ...c, udsEntregadas: Math.max(0, c.udsEntregadas + difUds) }
+        : c
+    );
+    const nuevasEntregas = data.entregas.map(e => e.id === entregaActualizada.id ? entregaActualizada : e);
+    const nd = { ...data, custodias: nuevasCustodias, entregas: nuevasEntregas };
+    setData(nd); persist(nd); setEditEntregaTarget(null);
+  };
+
+  const handleDelete = (id) => {
+    const nd = { ...data, custodias: data.custodias.filter(c => c.id !== id) };
+    setData(nd); persist(nd); setDeleteTarget(null);
+  };
+
+  const activasCnt = data ? data.custodias.filter(c => c.udsTotales - c.udsEntregadas > 0).length : 0;
+  const deudasCnt = data ? (data.prestamos || []).filter(p => !p.saldado).length : 0;
+
+  if (!data) return (
+    <div className="app">
+      <div className="loader"><div className="spinner" /><span>Cargando datos...</span></div>
+    </div>
+  );
+
+  return (
+    <div className="app">
+      <header className="header">
+        <div className="logo">
+          <LogoAD size={40} color={darkMode ? "#FFFFFF" : "#002D5A"} />
+          <div>
+            <div className="logo-text">Recambios Ibiza</div>
+            <div className="logo-sub">GESTOR DE STOCK EN CUSTODIA</div>
+          </div>
+        </div>
+        <div className="header-right">
+          <div className={`header-save ${saveStatus === "saved" ? "saved" : ""}`}>
+            {saveStatus === "saving" ? "⟳ Guardando..." : "✓ Sincronizado"}
+          </div>
+          <button className="btn btn-ghost btn-sm" onClick={() => setShowAyuda(true)} style={{ fontWeight:700 }}>❓ Ayuda</button>
+          <div className="theme-toggle">
+            <button className={`theme-opt ${!darkMode ? "active" : ""}`} onClick={() => setDarkMode(false)}>Claro</button>
+            <button className={`theme-opt ${darkMode ? "active" : ""}`} onClick={() => setDarkMode(true)}>Oscuro</button>
+          </div>
+        </div>
+      </header>
+
+      <nav className="nav">
+        {[
+          { id: "dashboard",  label: "Panel de Control" },
+          { id: "custodias",  label: "Custodias" },
+          { id: "entregas",   label: "Entregas" },
+          { id: "productos",  label: "Productos" },
+          { id: "historial",  label: "Histórico" },
+        ].map(t => (
+          <button key={t.id} className={`nav-btn ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>
+            {t.label}
+          </button>
+        ))}
+      </nav>
+
+      <main className="main">
+        <div className="main-inner">
+        {tab === "dashboard" && (
+          <Dashboard
+            data={data}
+            onNuevaCustodia={() => setModal("nueva")}
+            onNuevaEntrega={() => setShowNuevaEntrega(true)}
+            onEntrega={c => setSelectedCustodia(c)}
+            onDelete={c => setDeleteTarget(c)}
+            onEditar={c => setEditTarget(c)}
+            onEditarEntrega={e => setEditEntregaTarget(e)}
+            onPrestamo={c => setPrestamoTarget(c)}
+            onSaldarDeuda={handleSaldarDeuda}
+          />
+        )}
+        {tab === "custodias" && <div className="tab-scroll"><TabCustodias data={data} /></div>}
+        {tab === "entregas"  && <div className="tab-scroll"><TabEntregas data={data} /></div>}
+        {tab === "productos" && <div className="tab-scroll"><TabProductos data={data} onBulkUpdateRef={handleBulkUpdateRef} /></div>}
+        {tab === "historial" && <div style={{ flex:1, overflow:"hidden", display:"flex", flexDirection:"column" }}><Historial data={data} /></div>}
+        </div>{/* end main-inner */}
+      </main>
+
+      {showAyuda && <PanelAyuda onClose={() => setShowAyuda(false)} />}
+      {editEntregaTarget && (() => {
+        const custodia = data.custodias.find(c => c.id === editEntregaTarget.custodiaId);
+        return <ModalEditarEntrega entrega={editEntregaTarget} custodia={custodia}
+          onClose={() => setEditEntregaTarget(null)} onSave={handleEditarEntrega} />;
+      })()}
+      {editTarget && (
+        <ModalEditarCustodia custodia={editTarget} clientes={clientes} onClose={() => setEditTarget(null)} onSave={handleEditar} />
+      )}
+      {deleteTarget && (
+        <ModalConfirmar
+          titulo="¿Eliminar esta custodia?"
+          tipo="danger"
+          labelConfirm="🗑️ Sí, eliminar"
+          mensaje={`Vas a eliminar la custodia de ${deleteTarget.cliente} · ${deleteTarget.referencia} · ${deleteTarget.producto}`}
+          detalles={`Albarán: ${deleteTarget.albaran || "—"} · Almacén: ${deleteTarget.almacen} · ${deleteTarget.udsTotales - deleteTarget.udsEntregadas} ud. pendientes`}
+          onConfirm={() => handleDelete(deleteTarget.id)}
+          onClose={() => setDeleteTarget(null)}
+        />
+      )}
+      {showNuevaEntrega && (
+        <ModalNuevaEntrega data={data} onClose={() => setShowNuevaEntrega(false)} onSave={handleNuevaEntrega} />
+      )}
+      {modal === "nueva" && (
+        <ModalNuevaCustodia clientes={clientes} custodias={data.custodias} onClose={() => setModal(null)} onSave={handleNuevaCustodia} />
+      )}
+      {selectedCustodia && (
+        <ModalEntrega custodia={selectedCustodia} onClose={() => setSelectedCustodia(null)} onSave={handleEntrega} allCustodias={data.custodias} />
+      )}
+      {prestamoTarget && (
+        <ModalPrestamo custodia={prestamoTarget} onClose={() => setPrestamoTarget(null)} onSave={handlePrestamo} />
+      )}
+    </div>
+  );
+}
+
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
