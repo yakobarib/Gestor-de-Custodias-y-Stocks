@@ -1448,7 +1448,7 @@ function reprintMovimiento(m, data, autoprint = true) {
       printMultiDeliveryDoc(m.cliente, lineas, data.custodias, operario, albaran);
       return;
     }
-    const eid = m.id.replace("e-", "");
+    const eid = m.id.replace(/^eg?-/, "");
     const entrega = data.entregas.find(e => e.id === eid);
     const custodia = data.custodias.find(c => c.id === entrega?.custodiaId);
     if (entrega && custodia) {
