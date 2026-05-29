@@ -1411,15 +1411,15 @@ function Dashboard({ data, onNuevaCustodia, onNuevaEntrega, onEntrega, onDelete,
                     <td style={{ fontFamily:"var(--mono,monospace)", fontWeight:700, color: pendientes>0 ? "var(--green)" : "var(--text-dim)", textAlign:"right" }}>{pendientes}</td>
                     <td style={{ color: "var(--text-dim)" }}>{fmt(c.fecha)}</td>
                     <td>
-                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", gap: 4, flexWrap: "nowrap", alignItems: "center" }}>
                         {pendientes > 0 && (
                           <>
-                            <button className="btn btn-ghost btn-sm" onClick={() => onEntrega(c)}>🚚 Entregar</button>
-                            <button className="btn btn-sm" style={{ background: "rgba(255,140,0,0.12)", color: "#ff8c00", border: "1px solid rgba(255,140,0,0.3)" }} onClick={() => onPrestamo(c)} title="Tomar unidades prestadas temporalmente">⚠️</button>
+                            <button className="btn btn-sm" style={{ background:"var(--accent)", color:"#fff", padding:"5px 8px" }} onClick={() => onEntrega(c)} title="Registrar entrega">🚚</button>
+                            <button className="btn btn-sm" style={{ background:"rgba(255,140,0,0.12)", color:"#ff8c00", border:"1px solid rgba(255,140,0,0.3)", padding:"5px 8px" }} onClick={() => onPrestamo(c)} title="Préstamo temporal">⚠️</button>
                           </>
                         )}
-                        <button className="btn btn-sm" style={{ background: "rgba(0,45,90,0.1)", color: "var(--blue2)", border: "1px solid rgba(0,45,90,0.2)" }} onClick={() => onEditar(c)} title="Editar custodia">✏️</button>
-                        <button className="btn btn-danger btn-sm" onClick={() => onDelete(c)} title="Eliminar custodia">🗑️</button>
+                        <button className="btn btn-sm" style={{ background:"rgba(0,45,90,0.1)", color:"var(--blue2)", border:"1px solid rgba(0,45,90,0.2)", padding:"5px 8px" }} onClick={() => onEditar(c)} title="Editar custodia">✏️</button>
+                        <button className="btn btn-danger btn-sm" style={{ padding:"5px 8px" }} onClick={() => onDelete(c)} title="Eliminar custodia">🗑️</button>
                       </div>
                     </td>
                   </tr>
