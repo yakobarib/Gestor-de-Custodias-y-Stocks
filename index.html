@@ -1449,7 +1449,7 @@ function reprintMovimiento(m, data, autoprint = true) {
       return;
     }
     const eid = m.id.replace(/^eg?-/, "");
-    const entrega = data.entregas.find(e => e.id === eid);
+    const entrega = data.entregas.find(e => e.id === eid) || data.entregas.find(e => e.grupoEntrega === eid);
     const custodia = data.custodias.find(c => c.id === entrega?.custodiaId);
     if (entrega && custodia) {
       printDeliveryDoc(custodia, entrega, data.custodias);
