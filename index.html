@@ -1231,7 +1231,7 @@ function Dashboard({ data, onNuevaCustodia, onNuevaEntrega, onEntrega, onDelete,
     custodiaDeudas[p.custodiaId].push(p);
   });
 
-  const ningunoSeleccionado = !filterCliente;
+  const ningunoSeleccionado = !filterCliente && !search && !filterAlbaran && !filterYear;
 
   const filtered = ningunoSeleccionado ? [] : data.custodias.filter(c => {
     const pendientes = c.udsTotales - c.udsEntregadas;
