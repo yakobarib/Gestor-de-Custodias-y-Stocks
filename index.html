@@ -1306,7 +1306,7 @@ function Dashboard({ data, onNuevaCustodia, onNuevaEntrega, onEntrega, onDelete,
       <div className="section-header" style={{ marginTop: 16 }}>
         <div>
           <div className="section-title">Stock en custodia</div>
-          <div className="section-sub">{ningunoSeleccionado ? "Usa los filtros para consultar el stock" : filterEstado === "COMPLETAS" ? `${entregasCliente.length} entregas realizadas` : `${filtered.length} custodias activas`}</div>
+          <div className="section-sub">{ningunoSeleccionado ? "Escribe un nombre, referencia o elige un cliente" : filterEstado === "COMPLETAS" ? `${entregasCliente.length} entregas realizadas` : `${filtered.length} custodias activas`}</div>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <button className="btn btn-primary" onClick={onNuevaCustodia}>+ Nueva custodia</button>
@@ -1339,7 +1339,7 @@ function Dashboard({ data, onNuevaCustodia, onNuevaEntrega, onEntrega, onDelete,
           <div className="empty-sub">Elige un cliente, almacén o estado — o busca por texto</div>
           <div className="krafted">Krafted by <span>Yakoba Moreno</span></div>
           <div className="krafted" style={{ marginTop: 6 }}>Designed in <span style={{ color: "#002D5A" }}>Claude Code</span></div>
-          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>Gestor de Stocks y Custodias <span style={{ color: "var(--text-dim)" }}>v.7.1</span></div>
+          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>Gestor de Stocks y Custodias <span style={{ color: "var(--text-dim)" }}>v.7.9.5</span></div>
         </div>
       ) : filterEstado === "COMPLETAS" ? (
         entregasCliente.length === 0 ? (
@@ -2114,6 +2114,12 @@ function TabEntregas({ data }) {
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v7.9.5", d:"Junio 2026", items:[
+    "Fix reimpresión desde Histórico (entregas simples y múltiples)",
+    "Buscador inteligente en Panel de Control: resultados al escribir sin necesitar seleccionar cliente",
+    "Botones de acción en tabla: iconos en línea sin superposición, colores semitransparentes",
+    "Fix bug ID de grupo en entregas del flujo Nueva Entrega",
+  ]},
   { v:"v7.1", d:"Junio 2026", items:[
     "Nueva pestaña Productos: stock agregado por referencia con edición masiva",
     "Panel de Ayuda con Manual embebido, Changelog y Acerca de",
@@ -2222,7 +2228,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v7.1</div>
+                <div className="about-version">v7.9.5</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
