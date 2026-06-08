@@ -33,10 +33,8 @@
   .header-right { display: flex; align-items: center; gap: 12px; }
   .header-save { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 5px 12px; }
   .header-save.saved { color: var(--green); border-color: rgba(46,125,50,0.4); background: rgba(46,125,50,0.07); }
-  .theme-toggle { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 3px; gap: 2px; }
-  .theme-opt { padding: 5px 14px; border-radius: 6px; border: none; cursor: pointer; font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; transition: all 0.2s; background: transparent; color: var(--text-dim); white-space: nowrap; }
-  .theme-opt.active { background: #002D5A; color: #fff; box-shadow: 0 2px 8px rgba(0,45,90,0.4); }
-  .theme-opt:not(.active):hover { color: var(--text); }
+  .theme-btn-sq { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .theme-btn-sq:hover { border-color: var(--accent); }
   @keyframes blink-red { 0%,100% { color: #E20613; } 50% { color: rgba(226,6,19,0.25); } }
   .kpi-value.debt-alert { animation: blink-red 1.2s ease-in-out infinite; font-weight: 900; }
   .krafted { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-faint); margin-top: 20px; }
@@ -468,8 +466,8 @@ function printDeliveryDoc(custodia, entrega, allCustodias) {
       ${stockCliente.map(c => {
         const pend = c.udsTotales - c.udsEntregadas;
         const isCurrent = c.id === custodia.id;
-        const entregadasMostrar = isCurrent ? c.udsEntregadas + entrega.uds : c.udsEntregadas;
-        const pendMostrar = isCurrent ? Math.max(0, pend - entrega.uds) : pend;
+        const entregadasMostrar = c.udsEntregadas;
+        const pendMostrar = Math.max(0, c.udsTotales - c.udsEntregadas);
         return `<tr${isCurrent ? ' style="background:#f0fff4;"' : ''}>
           <td>${c.referencia}</td><td>${c.producto}</td><td>${c.almacen}</td>
           <td style="text-align:right">${c.udsTotales}</td>
@@ -739,8 +737,8 @@ function printMultiDeliveryDoc(cliente, lineas, allCustodias, operario, albaranS
   const totalUds = lineas.reduce((s,l)=>s+l.uds, 0);
 
   const stockRows = stockCliente.map(c => {
-    const entregaExtra = lineas.find(l => l.custodiaId === c.id)?.uds || 0;
-    const pend = c.udsTotales - c.udsEntregadas - entregaExtra;
+    const entregaExtra = 0; // El estado ya refleja la entrega guardada
+    const pend = c.udsTotales - c.udsEntregadas;
     const highlight = lineaIds.has(c.id);
     return '<tr' + (highlight ? ' style="background:#f0fff4;"' : '') + '><td>' + c.referencia + '</td><td>' + c.producto + '</td><td>' + c.almacen + '</td><td style="text-align:right">' + c.udsTotales + '</td><td style="text-align:right">' + (c.udsEntregadas + entregaExtra) + '</td><td style="text-align:right;font-weight:bold;color:' + (pend<=0?'#999':'#1a7f4b') + '">' + Math.max(0,pend) + '</td></tr>';
   }).join('');
@@ -2588,10 +2586,7 @@ function App() {
             {saveStatus === "saving" ? "⟳ Guardando..." : "✓ Sincronizado"}
           </div>
           <button className="btn btn-ghost btn-sm" onClick={() => setShowAyuda(true)} style={{ fontWeight:700 }}>❓ Ayuda</button>
-          <div className="theme-toggle">
-            <button className={`theme-opt ${!darkMode ? "active" : ""}`} onClick={() => setDarkMode(false)}>Claro</button>
-            <button className={`theme-opt ${darkMode ? "active" : ""}`} onClick={() => setDarkMode(true)}>Oscuro</button>
-          </div>
+          <button className="theme-btn-sq" onClick={() => setDarkMode(d => !d)} title={darkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}>{darkMode ? "☀️" : "🌙"}</button>
         </div>
       </header>
 
