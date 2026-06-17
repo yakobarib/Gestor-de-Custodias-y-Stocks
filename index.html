@@ -2586,7 +2586,7 @@ function App() {
             {saveStatus === "saving" ? "⟳ Guardando..." : "✓ Sincronizado"}
           </div>
           <button className="btn btn-ghost btn-sm" onClick={() => setShowAyuda(true)} style={{ fontWeight:700 }}>❓ Ayuda</button>
-          <button className="theme-btn-sq" onClick={() => setDarkMode(d => !d)} title={darkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}>{darkMode ? "☀️" : "🌙"}</button>
+          <button className="theme-btn-sq" onClick={() => setDarkMode(d => !d)} title={darkMode ? "Modo claro" : "Modo oscuro"}>{darkMode ? "○" : "●"}</button>
         </div>
       </header>
 
