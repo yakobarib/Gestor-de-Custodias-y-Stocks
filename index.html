@@ -33,8 +33,8 @@
   .header-right { display: flex; align-items: center; gap: 12px; }
   .header-save { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 5px 12px; }
   .header-save.saved { color: var(--green); border-color: rgba(46,125,50,0.4); background: rgba(46,125,50,0.07); }
-  .theme-btn-sq { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
-  .theme-btn-sq:hover { border-color: var(--accent); }
+  .theme-btn-sq { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; color: var(--text); font-weight: 700; }
+  .theme-btn-sq:hover { border-color: var(--accent); background: var(--accent-dim); }
   @keyframes blink-red { 0%,100% { color: #E20613; } 50% { color: rgba(226,6,19,0.25); } }
   .kpi-value.debt-alert { animation: blink-red 1.2s ease-in-out infinite; font-weight: 900; }
   .krafted { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-faint); margin-top: 20px; }
@@ -197,6 +197,16 @@
   .about-kraft { font-family:'JetBrains Mono',monospace; font-size:12px; margin-top:20px; color:var(--text-faint); }
   .about-kraft span { color:#a8e63d; font-weight:700; }
   [data-theme='light'] .about-kraft span.blue { color:#002D5A; }
+
+
+  .config-overlay { position:fixed; inset:0; z-index:250; }
+  .config-panel { position:fixed; top:60px; right:12px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 20px; box-shadow:0 8px 32px rgba(0,0,0,0.25); z-index:251; min-width:220px; }
+  .config-title { font-family:'Syne',sans-serif; font-weight:700; font-size:13px; color:var(--text); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+  .config-label { font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text-dim); margin-bottom:8px; }
+  .font-size-btns { display:flex; gap:6px; }
+  .font-size-btn { flex:1; padding:7px 4px; border-radius:6px; border:1px solid var(--border); background:var(--surface2); cursor:pointer; font-family:'Syne',sans-serif; font-weight:600; color:var(--text-dim); transition:all 0.15s; text-align:center; }
+  .font-size-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .font-size-btn:not(.active):hover { border-color:var(--accent); color:var(--accent); }
 
   </style>
 </head>
@@ -1208,7 +1218,7 @@ function ModalEditarEntrega({ entrega, custodia, onClose, onSave }) {
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
-function Dashboard({ data, onNuevaCustodia, onNuevaEntrega, onEntrega, onDelete, onEditar, onEditarEntrega, onPrestamo, onSaldarDeuda }) {
+function Dashboard({ data, isMobile, onNuevaCustodia, onNuevaEntrega, onEntrega, onDelete, onEditar, onEditarEntrega, onPrestamo, onSaldarDeuda }) {
   const [search, setSearch] = useState("");
   const [filterCliente, setFilterCliente] = useState("");
   const [filterAlmacen, setFilterAlmacen] = useState("");
@@ -1306,10 +1316,17 @@ function Dashboard({ data, onNuevaCustodia, onNuevaEntrega, onEntrega, onDelete,
           <div className="section-title">Stock en custodia</div>
           <div className="section-sub">{ningunoSeleccionado ? "Escribe un nombre, referencia o elige un cliente" : filterEstado === "COMPLETAS" ? `${entregasCliente.length} entregas realizadas` : `${filtered.length} custodias activas`}</div>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button className="btn btn-primary" onClick={onNuevaCustodia}>+ Nueva custodia</button>
-          <button className="btn btn-green" onClick={onNuevaEntrega}>🚚 Nueva entrega</button>
-        </div>
+        {!isMobile && (
+          <div style={{ display: "flex", gap: 10 }}>
+            <button className="btn btn-primary" onClick={onNuevaCustodia}>+ Nueva custodia</button>
+            <button className="btn btn-green" onClick={onNuevaEntrega}>🚚 Nueva entrega</button>
+          </div>
+        )}
+        {isMobile && (
+          <div style={{ fontFamily:"var(--mono,monospace)", fontSize:10, color:"var(--text-faint)", background:"var(--surface2)", border:"1px solid var(--border)", borderRadius:6, padding:"5px 10px" }}>
+            Solo lectura en movil
+          </div>
+        )}
       </div>
 
       <div className="search-bar" style={{ marginBottom: 0, paddingBottom: 12 }}>
@@ -1409,15 +1426,13 @@ function Dashboard({ data, onNuevaCustodia, onNuevaEntrega, onEntrega, onDelete,
                     <td style={{ fontFamily:"var(--mono,monospace)", fontWeight:700, color: pendientes>0 ? "var(--green)" : "var(--text-dim)", textAlign:"right" }}>{pendientes}</td>
                     <td style={{ color: "var(--text-dim)" }}>{fmt(c.fecha)}</td>
                     <td>
-                      <div style={{ display: "flex", gap: 4, flexWrap: "nowrap", alignItems: "center" }}>
-                        {pendientes > 0 && (
-                          <>
+                      <div style={{ display:"flex", gap:4, flexWrap:"nowrap", alignItems:"center" }}>
+                        {!isMobile && pendientes > 0 && <>
                             <button className="btn btn-sm" style={{ background:"rgba(26,127,75,0.15)", color:"var(--green)", border:"1px solid rgba(26,127,75,0.3)", padding:"5px 8px" }} onClick={() => onEntrega(c)} title="Registrar entrega">🚚</button>
                             <button className="btn btn-sm" style={{ background:"rgba(255,140,0,0.12)", color:"#ff8c00", border:"1px solid rgba(255,140,0,0.3)", padding:"5px 8px" }} onClick={() => onPrestamo(c)} title="Préstamo temporal">⚠️</button>
-                          </>
-                        )}
-                        <button className="btn btn-sm" style={{ background:"rgba(255,140,0,0.12)", color:"#ff8c00", border:"1px solid rgba(255,140,0,0.3)", padding:"5px 8px" }} onClick={() => onEditar(c)} title="Editar custodia">✏️</button>
-                        <button className="btn btn-danger btn-sm" style={{ padding:"5px 8px" }} onClick={() => onDelete(c)} title="Eliminar custodia">🗑️</button>
+                          </>}
+                        {!isMobile && <><button className="btn btn-sm" style={{ background:"rgba(255,140,0,0.12)", color:"#ff8c00", border:"1px solid rgba(255,140,0,0.3)", padding:"5px 8px" }} onClick={() => onEditar(c)} title="Editar custodia">✏️</button>
+                        <button className="btn btn-danger btn-sm" style={{ padding:"5px 8px" }} onClick={() => onDelete(c)} title="Eliminar custodia">🗑️</button></> }
                       </div>
                     </td>
                   </tr>
@@ -2110,6 +2125,37 @@ function TabEntregas({ data }) {
 
 
 
+
+// ─── PANEL CONFIGURACIÓN ─────────────────────────────────────────────────────
+function PanelConfig({ fontSize, onFontSize, onClose }) {
+  const sizes = [
+    { key: 'sm',  label: 'A',  title: 'Pequeño',    scale: '90%'  },
+    { key: 'md',  label: 'A',  title: 'Normal',     scale: '100%' },
+    { key: 'lg',  label: 'A',  title: 'Grande',     scale: '112%' },
+    { key: 'xl',  label: 'A',  title: 'Extra',      scale: '125%' },
+  ];
+  return (
+    <>
+      <div className="config-overlay" onClick={onClose} />
+      <div className="config-panel">
+        <div className="config-title">⚙️ Configuración</div>
+        <div className="config-label">Tamaño de letra</div>
+        <div className="font-size-btns">
+          {sizes.map((s, i) => (
+            <button key={s.key}
+              className={"font-size-btn" + (fontSize === s.key ? " active" : "")}
+              style={{ fontSize: 10 + i * 2 + 'px' }}
+              title={s.title}
+              onClick={() => { onFontSize(s.key, s.scale); onClose(); }}>
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
   { v:"v7.9.5", d:"Junio 2026", items:[
@@ -2471,7 +2517,15 @@ function App() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saveStatus, setSaveStatus] = useState("saved");
   const [showAyuda, setShowAyuda] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const [fontSize, setFontSize] = useState(() => localStorage.getItem('ri-fontsize') || 'md');
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('ri-theme') !== 'light');
+  useEffect(() => {
+    const scales = { sm:'90%', md:'100%', lg:'112%', xl:'125%' };
+    document.documentElement.style.fontSize = scales[fontSize] || '100%';
+  }, [fontSize]);
+
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
     localStorage.setItem('ri-theme', darkMode ? 'dark' : 'light');
@@ -2536,6 +2590,12 @@ function App() {
     setData(nd); persist(nd); setEditTarget(null);
   };
 
+  const handleFontSize = (key, scale) => {
+    setFontSize(key);
+    localStorage.setItem('ri-fontsize', key);
+    document.documentElement.style.fontSize = scale;
+  };
+
   const handleBulkUpdateRef = (refOld, refNew, productoNew) => {
     const nc = data.custodias.map(c =>
       c.referencia === refOld ? { ...c, referencia: refNew, producto: productoNew } : c
@@ -2586,7 +2646,8 @@ function App() {
             {saveStatus === "saving" ? "⟳ Guardando..." : "✓ Sincronizado"}
           </div>
           <button className="btn btn-ghost btn-sm" onClick={() => setShowAyuda(true)} style={{ fontWeight:700 }}>❓ Ayuda</button>
-          <button className="theme-btn-sq" onClick={() => setDarkMode(d => !d)} title={darkMode ? "Modo claro" : "Modo oscuro"}>{darkMode ? "○" : "●"}</button>
+          <button className="theme-btn-sq" onClick={() => setShowConfig(s => !s)} title="Configuración">⚙️</button>
+          <button className="theme-btn-sq" onClick={() => setDarkMode(d => !d)} title={darkMode ? "Modo claro" : "Modo oscuro"}>{darkMode ? <span style={{color:"#f0c040",fontSize:16}}>☀</span> : <span style={{color:"#7090d0",fontSize:15}}>☽</span>}</button>
         </div>
       </header>
 
@@ -2609,13 +2670,14 @@ function App() {
         {tab === "dashboard" && (
           <Dashboard
             data={data}
-            onNuevaCustodia={() => setModal("nueva")}
-            onNuevaEntrega={() => setShowNuevaEntrega(true)}
+            isMobile={isMobile}
+            onNuevaCustodia={() => !isMobile && setModal("nueva")}
+            onNuevaEntrega={() => !isMobile && setShowNuevaEntrega(true)}
             onEntrega={c => setSelectedCustodia(c)}
-            onDelete={c => setDeleteTarget(c)}
-            onEditar={c => setEditTarget(c)}
-            onEditarEntrega={e => setEditEntregaTarget(e)}
-            onPrestamo={c => setPrestamoTarget(c)}
+            onDelete={c => !isMobile && setDeleteTarget(c)}
+            onEditar={c => !isMobile && setEditTarget(c)}
+            onEditarEntrega={e => !isMobile && setEditEntregaTarget(e)}
+            onPrestamo={c => !isMobile && setPrestamoTarget(c)}
             onSaldarDeuda={handleSaldarDeuda}
           />
         )}
@@ -2626,6 +2688,7 @@ function App() {
         </div>{/* end main-inner */}
       </main>
 
+      {showConfig && <PanelConfig fontSize={fontSize} onFontSize={handleFontSize} onClose={() => setShowConfig(false)} />}
       {showAyuda && <PanelAyuda onClose={() => setShowAyuda(false)} />}
       {editEntregaTarget && (() => {
         const custodia = data.custodias.find(c => c.id === editEntregaTarget.custodiaId);
