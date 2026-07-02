@@ -1543,6 +1543,7 @@ function Historial({ data }) {
       esMultiple: g.esMultiple,
       grupoEntregaKey: g.esMultiple ? g.key : null,
       lineas: g.lineas,
+      primerNumEntrega: g.primerNumEntrega || "",
     }))
   ]
   .filter(m => {
@@ -1553,7 +1554,13 @@ function Historial({ data }) {
   .sort((a, b) => {
     const da = a.fecha && a.fecha.match(/^\d{4}/) ? a.fecha : "1900";
     const db = b.fecha && b.fecha.match(/^\d{4}/) ? b.fecha : "1900";
-    return db.localeCompare(da);
+    const fc = db.localeCompare(da);
+    if (fc !== 0) return fc;
+    // Mismo día: ENTREGA por numEntrega desc, CUSTODIA por id desc
+    const na = parseInt((a.primerNumEntrega||"").replace(/\D/g,"") || "0");
+    const nb = parseInt((b.primerNumEntrega||"").replace(/\D/g,"") || "0");
+    if (na > 0 || nb > 0) return nb - na;
+    return (b.id||"").localeCompare(a.id||"");
   });
 
   return (
