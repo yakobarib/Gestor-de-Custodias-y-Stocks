@@ -476,8 +476,8 @@ function printDeliveryDoc(custodia, entrega, allCustodias) {
       ${stockCliente.map(c => {
         const pend = c.udsTotales - c.udsEntregadas;
         const isCurrent = c.id === custodia.id;
-        const entregadasMostrar = c.udsEntregadas;
-        const pendMostrar = Math.max(0, c.udsTotales - c.udsEntregadas);
+        const entregadasMostrar = isCurrent ? c.udsEntregadas + entrega.uds : c.udsEntregadas;
+        const pendMostrar = isCurrent ? Math.max(0, c.udsTotales - c.udsEntregadas - entrega.uds) : Math.max(0, c.udsTotales - c.udsEntregadas);
         return `<tr${isCurrent ? ' style="background:#f0fff4;"' : ''}>
           <td>${c.referencia}</td><td>${c.producto}</td><td>${c.almacen}</td>
           <td style="text-align:right">${c.udsTotales}</td>
@@ -747,8 +747,8 @@ function printMultiDeliveryDoc(cliente, lineas, allCustodias, operario, albaranS
   const totalUds = lineas.reduce((s,l)=>s+l.uds, 0);
 
   const stockRows = stockCliente.map(c => {
-    const entregaExtra = 0; // El estado ya refleja la entrega guardada
-    const pend = c.udsTotales - c.udsEntregadas;
+    const entregaExtra = lineas.find(l => l.custodiaId === c.id)?.uds || 0;
+    const pend = c.udsTotales - c.udsEntregadas - entregaExtra;
     const highlight = lineaIds.has(c.id);
     return '<tr' + (highlight ? ' style="background:#f0fff4;"' : '') + '><td>' + c.referencia + '</td><td>' + c.producto + '</td><td>' + c.almacen + '</td><td style="text-align:right">' + c.udsTotales + '</td><td style="text-align:right">' + (c.udsEntregadas + entregaExtra) + '</td><td style="text-align:right;font-weight:bold;color:' + (pend<=0?'#999':'#1a7f4b') + '">' + Math.max(0,pend) + '</td></tr>';
   }).join('');
@@ -1458,8 +1458,12 @@ function reprintMovimiento(m, data, autoprint = true) {
       const lineas = entregasGrupo.map(e => ({ custodiaId: e.custodiaId, uds: e.uds }));
       const operario = entregasGrupo[0]?.operario || "";
       const albaran = entregasGrupo[0]?.albaran || "";
-      const win = window.open('', '_blank', 'width=820,height=950');
-      printMultiDeliveryDoc(m.cliente, lineas, data.custodias, operario, albaran);
+      // Reconstruir estado pre-guardado para impresión correcta
+      const custodiasPrevias = data.custodias.map(c => {
+        const udsDev = entregasGrupo.filter(e => e.custodiaId === c.id).reduce((s,e)=>s+e.uds,0);
+        return udsDev > 0 ? { ...c, udsEntregadas: Math.max(0, c.udsEntregadas - udsDev) } : c;
+      });
+      printMultiDeliveryDoc(m.cliente, lineas, custodiasPrevias, operario, albaran);
       return;
     }
     const eid = m.id.replace(/^eg?-/, "");
@@ -2050,11 +2054,12 @@ function TabEntregas({ data }) {
                     if (g.esMultiple) {
                       const entregasGrupo = data.entregas.filter(e => e.grupoEntrega === g.key);
                       const lineas = entregasGrupo.map(e => ({ custodiaId: e.custodiaId, uds: e.uds }));
-                      printMultiDeliveryDoc(g.cliente, lineas, data.custodias, g.operario, g.albaran);
+                      const custPrev = data.custodias.map(c => { const ud=entregasGrupo.filter(e=>e.custodiaId===c.id).reduce((s,e)=>s+e.uds,0); return ud>0?{...c,udsEntregadas:Math.max(0,c.udsEntregadas-ud)}:c; });
+                      printMultiDeliveryDoc(g.cliente, lineas, custPrev, g.operario, g.albaran);
                     } else {
                       const entrega = data.entregas.find(e => e.id === g.lineas[0]?.id);
                       const custodia = data.custodias.find(c => c.id === entrega?.custodiaId);
-                      if (entrega && custodia) printDeliveryDoc(custodia, entrega, data.custodias);
+                      if (entrega && custodia) { const cp={...custodia,udsEntregadas:Math.max(0,custodia.udsEntregadas-entrega.uds)}; const ap=data.custodias.map(c=>c.id===custodia.id?cp:c); printDeliveryDoc(cp, entrega, ap); }
                     }
                   }}>🖨️</button>
               </td>
