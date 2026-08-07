@@ -109,7 +109,7 @@
   input, select, textarea { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text); outline: none; transition: border-color 0.15s; width: 100%; }
   input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   input:not([type=date]):not([type=number]), textarea { text-transform: uppercase; }
-  .login-card input { text-transform: none !important; }
+  .login-card input, input[type=password] { text-transform: none !important; }
   input::placeholder, textarea::placeholder { color: var(--text-faint); }
   select option { background: var(--surface); }
   textarea { resize: vertical; min-height: 70px; }
@@ -297,6 +297,18 @@ async function refreshSession() {
 
 function logout() {
   saveSession(null);
+}
+
+async function updatePassword(newPassword) {
+  const headers = await authHeaders();
+  const res = await fetch(SUPABASE_URL + "/auth/v1/user", {
+    method: "PUT",
+    headers,
+    body: JSON.stringify({ password: newPassword }),
+  });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error_description || body.msg || "No se pudo cambiar la contraseña");
+  return body;
 }
 
 async function authHeaders() {
@@ -1429,7 +1441,7 @@ function Dashboard({ data, isMobile, onNuevaCustodia, onNuevaEntrega, onEntrega,
           <div className="empty-sub">Elige un cliente, almacén o estado — o busca por texto</div>
           <div className="krafted">Krafted by <span>Yakoba Moreno</span></div>
           <div className="krafted" style={{ marginTop: 6 }}>Designed in <span style={{ color: "#002D5A" }}>Claude Code</span></div>
-          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>Gestor de Stocks y Custodias <span style={{ color: "var(--text-dim)" }}>v.8.1.0</span></div>
+          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>Gestor de Stocks y Custodias <span style={{ color: "var(--text-dim)" }}>v.8.1.1</span></div>
         </div>
       ) : filterEstado === "COMPLETAS" ? (
         entregasCliente.length === 0 ? (
@@ -2210,7 +2222,7 @@ function TabEntregas({ data }) {
 
 
 // ─── PANEL CONFIGURACIÓN ─────────────────────────────────────────────────────
-function PanelConfig({ fontSize, onFontSize, onClose, data }) {
+function PanelConfig({ fontSize, onFontSize, onClose, data, onChangePassword }) {
   const sizes = [
     { key: 'sm',  label: 'A',  title: 'Pequeño',    scale: '90%'  },
     { key: 'md',  label: 'A',  title: 'Normal',     scale: '100%' },
@@ -2256,6 +2268,8 @@ function PanelConfig({ fontSize, onFontSize, onClose, data }) {
         </div>
         <div className="config-label" style={{ marginTop: 20 }}>Copia de seguridad</div>
         <button className="btn btn-ghost" style={{ width: "100%" }} onClick={handleExport}>⬇️ Exportar datos (JSON)</button>
+        <div className="config-label" style={{ marginTop: 20 }}>Cuenta</div>
+        <button className="btn btn-ghost" style={{ width: "100%" }} onClick={() => { onClose(); onChangePassword(); }}>🔑 Cambiar contraseña</button>
       </div>
     </>
   );
@@ -2263,6 +2277,9 @@ function PanelConfig({ fontSize, onFontSize, onClose, data }) {
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v8.1.1", d:"Agosto 2026", items:[
+    "Nuevo: cambiar tu propia contraseña desde ⚙️ Configuración → Cuenta",
+  ]},
   { v:"v8.1.0", d:"Agosto 2026", items:[
     "Login obligatorio: cada operario entra con su email y contraseña",
     "Fin del riesgo de colisión al guardar: cada custodia/entrega/préstamo vive en su propia tabla, así dos operarios ya no pueden pisarse los cambios al guardar casi a la vez",
@@ -2339,6 +2356,7 @@ const CHANGELOG = [
 
 const MANUAL_SECTIONS = [
   { t:"Iniciar sesión", c:"Accede con el email y contraseña que te haya dado tu administrador. Solo las cuentas creadas para el equipo pueden entrar — no hay registro abierto. La sesión queda recordada en este dispositivo hasta que pulses el botón 🚪 de cerrar sesión en la cabecera." },
+  { t:"Cambiar contraseña", c:"Desde ⚙️ Configuración → sección Cuenta → 'Cambiar contraseña', puedes poner una contraseña nueva para tu propia cuenta (mínimo 6 caracteres)." },
   { t:"Panel de Control", c:"Selecciona primero un Cliente para ver su stock. El estado por defecto es 'Activas'. Cambia a 'Completadas' para ver las entregas realizadas y poder editarlas. Los botones ✏️ editan la custodia y 🗑️ la eliminan (con confirmación)." },
   { t:"Nueva Custodia", c:"Pulsa '+ Nueva custodia'. Rellena Cliente (*), Referencia (*) y Unidades (*). El campo Responsable/Operario es obligatorio. La referencia sugiere productos ya registrados — al seleccionarla, la descripción se rellena automáticamente. El campo Nº Promoción Skrit es opcional." },
   { t:"Nueva Entrega", c:"Usa '🚚 Nueva entrega' para entregar varios productos a la vez. 3 pasos: 1) Selecciona cliente, 2) Introduce cantidades por línea, 3) Confirma con fecha y operario (obligatorio). Se genera un documento de 2 páginas para imprimir." },
@@ -2394,7 +2412,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v8.1.0</div>
+                <div className="about-version">v8.1.1</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
@@ -2670,6 +2688,66 @@ function LoginScreen({ onLogin }) {
   );
 }
 
+// ─── CAMBIAR CONTRASEÑA ─────────────────────────────────────────────────────
+function ModalCambiarPassword({ onClose }) {
+  const [pass1, setPass1] = useState("");
+  const [pass2, setPass2] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const handleSave = async () => {
+    setError("");
+    if (pass1.length < 6) { setError("La contraseña debe tener al menos 6 caracteres"); return; }
+    if (pass1 !== pass2) { setError("Las contraseñas no coinciden"); return; }
+    setLoading(true);
+    try {
+      await updatePassword(pass1);
+      setDone(true);
+    } catch (e) {
+      setError(e.message || "No se pudo cambiar la contraseña");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (done) return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 420 }}>
+        <div className="modal-title">✓ Contraseña actualizada</div>
+        <div className="modal-sub">La próxima vez que inicies sesión, usa la nueva contraseña.</div>
+        <div className="form-actions">
+          <button className="btn btn-primary" onClick={onClose}>Cerrar</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 420 }}>
+        <div className="modal-title">🔑 Cambiar contraseña</div>
+        <div className="modal-sub">Introduce tu nueva contraseña</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div className="form-group">
+            <label>Nueva contraseña</label>
+            <input type="password" value={pass1} onChange={e => setPass1(e.target.value)} autoFocus />
+          </div>
+          <div className="form-group">
+            <label>Confirmar contraseña</label>
+            <input type="password" value={pass2} onChange={e => setPass2(e.target.value)} />
+          </div>
+        </div>
+        {error && <div className="login-error" style={{ marginTop: 14 }}>⚠️ {error}</div>}
+        <div className="form-actions">
+          <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+          <button className="btn btn-primary" onClick={handleSave} disabled={loading}>{loading ? "Guardando..." : "✓ Cambiar contraseña"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── APP ──────────────────────────────────────────────────────────────────────
 function MainApp({ onLogout, userEmail }) {
   const [data, setData] = useState(null);
@@ -2684,6 +2762,7 @@ function MainApp({ onLogout, userEmail }) {
   const [saveStatus, setSaveStatus] = useState("saved");
   const [showAyuda, setShowAyuda] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const [fontSize, setFontSize] = useState(() => localStorage.getItem('ri-fontsize') || 'md');
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('ri-theme') !== 'light');
@@ -2905,7 +2984,16 @@ function MainApp({ onLogout, userEmail }) {
         </div>{/* end main-inner */}
       </main>
 
-      {showConfig && <PanelConfig fontSize={fontSize} onFontSize={handleFontSize} onClose={() => setShowConfig(false)} data={data} />}
+      {showConfig && (
+        <PanelConfig
+          fontSize={fontSize}
+          onFontSize={handleFontSize}
+          onClose={() => setShowConfig(false)}
+          data={data}
+          onChangePassword={() => setShowChangePassword(true)}
+        />
+      )}
+      {showChangePassword && <ModalCambiarPassword onClose={() => setShowChangePassword(false)} />}
       {showAyuda && <PanelAyuda onClose={() => setShowAyuda(false)} />}
       {editEntregaTarget && (() => {
         const custodia = data.custodias.find(c => c.id === editEntregaTarget.custodiaId);
