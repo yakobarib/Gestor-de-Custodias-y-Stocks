@@ -8,9 +8,8 @@ Aplicación web para gestionar el stock que los clientes dejan en custodia (dep�
 ## Estructura del proyecto
 
 ```
-APP/HTML/
-  index.html              → versión en producción (desplegada en GitHub Pages)
-  Archivo de versiones/   → histórico de versiones anteriores (v6.0 → v8.0.2), solo referencia
+index.html                        → versión en producción (desplegada en GitHub Pages, sirve desde la raíz)
+APP/HTML/Archivo de versiones/    → histórico de versiones anteriores (v6.0 → v8.0.2), solo referencia
 MANUAL/
   Manual Gestor Custodias v6.0.pdf
 BRANDING/
@@ -20,7 +19,7 @@ BRANDING/
 Prueba de Impresion de Albaran de Entrega.pdf
 ```
 
-`index.html` es la única fuente de verdad para lo desplegado: es un SPA de React (transpilado en el navegador con Babel Standalone, sin build), sin dependencias de servidor propio.
+`index.html` (en la raíz del repo) es la única fuente de verdad para lo desplegado: es un SPA de React (transpilado en el navegador con Babel Standalone, sin build), sin dependencias de servidor propio.
 
 ## Stack técnico
 
