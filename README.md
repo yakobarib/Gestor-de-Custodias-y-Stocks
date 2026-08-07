@@ -3,12 +3,14 @@
 Aplicación web para gestionar el stock que los clientes dejan en custodia (depósito), sus entregas parciales y los préstamos temporales de mercancía entre clientes.
 
 - **App en producción:** https://yakobarib.github.io/Gestor-de-Custodias-y-Stocks/
-- **Versión actual:** v.8.0.4
+- **Versión actual:** v.8.1.0
 
 ## Estructura del proyecto
 
 ```
 index.html                        → versión en producción (desplegada en GitHub Pages, sirve desde la raíz)
+supabase/
+  migracion_tablas_por_entidad.sql → migración de app_state (bloque único) a tablas por entidad + RLS
 APP/HTML/Archivo de versiones/    → histórico de versiones anteriores (v6.0 → v8.0.2), solo referencia
 MANUAL/
   Manual Gestor Custodias v6.0.pdf
@@ -21,12 +23,14 @@ Prueba de Impresion de Albaran de Entrega.pdf
 
 `index.html` (en la raíz del repo) es la única fuente de verdad para lo desplegado: es un SPA de React (transpilado en el navegador con Babel Standalone, sin build), sin dependencias de servidor propio.
 
+**Puesta en marcha en un proyecto Supabase nuevo (o migración de uno con `app_state`):** ejecuta `supabase/migracion_tablas_por_entidad.sql` en el SQL Editor de Supabase, activa el proveedor Email en Authentication, desactiva el alta pública de usuarios y crea manualmente una cuenta por operario (Authentication → Users). El script no borra `app_state`, que queda como copia de seguridad de los datos previos.
+
 ## Stack técnico
 
 - React 18 + ReactDOM (CDN, UMD) — sin bundler, JSX compilado en el cliente.
-- Backend: [Supabase](https://supabase.com) (tabla `app_state`), sincronización entre operarios por polling cada 10s.
-- Persistencia local (`localStorage`): solo preferencias de UI (tema, tamaño de fuente).
-- Sin autenticación ni roles de usuario — pensado para un equipo reducido de confianza.
+- Backend: [Supabase](https://supabase.com), una tabla por entidad (`custodias`, `entregas`, `prestamos`), cada guardado es una operación atómica sobre su propia fila.
+- Autenticación: Supabase Auth (email + contraseña), una cuenta por operario. Las tablas están protegidas por Row Level Security: solo usuarios autenticados pueden leer o escribir.
+- Persistencia local (`localStorage`): sesión de login y preferencias de UI (tema, tamaño de fuente).
 
 ## Funcionalidades principales
 
@@ -43,8 +47,7 @@ Prueba de Impresion de Albaran de Entrega.pdf
 
 - El botón "Imprimir" abre el diálogo de impresión del navegador (`window.print()`); no genera directamente un PDF descargable.
 - Borrar una custodia no elimina sus entregas/préstamos asociados, a propósito (se conservan como historial); pero no hay forma de "limpiar" esos registros huérfanos si se quisiera.
-- Sin autenticación: cualquiera con el enlace puede editar o borrar datos; el campo "operario" es texto libre sin validar.
-- Sincronización por sondeo (polling) sobre un único bloque JSON: si dos operarios guardan casi a la vez, el último guardado puede sobrescribir cambios del otro. Pendiente de rediseño (tablas propias por entidad en Supabase) para eliminarlo por completo.
+- Todas las cuentas autenticadas tienen el mismo nivel de acceso (sin roles/permisos por operario); el campo "operario" de cada movimiento sigue siendo texto libre sin validar contra el usuario logueado.
 - El plan gratuito de Supabase puede pausarse tras ~1 semana de inactividad.
 
 El registro de cambios detallado por versión está disponible dentro de la propia app, en el panel de Ayuda → Changelog.

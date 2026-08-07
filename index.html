@@ -195,6 +195,12 @@
   [data-theme='light'] .about-kraft span.blue { color:#002D5A; }
 
 
+  .login-screen { min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--bg); padding:20px; }
+  .login-card { width:100%; max-width:340px; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:32px 28px; display:flex; flex-direction:column; align-items:center; text-align:center; box-shadow:0 8px 32px rgba(0,0,0,0.25); }
+  .login-title { font-family:'Inter',sans-serif; font-weight:800; font-size:18px; color:var(--text); margin-top:14px; }
+  .login-sub { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-dim); margin-top:2px; }
+  .login-card .form-group { width:100%; text-align:left; margin-bottom:14px; }
+  .login-error { width:100%; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent); background:var(--accent-dim); border:1px solid rgba(226,6,19,0.3); border-radius:8px; padding:8px 12px; margin-bottom:4px; }
   .config-overlay { position:fixed; inset:0; z-index:250; }
   .config-panel { position:fixed; top:60px; right:12px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 20px; box-shadow:0 8px 32px rgba(0,0,0,0.25); z-index:251; min-width:220px; }
   .config-title { font-family:'Syne',sans-serif; font-weight:700; font-size:13px; color:var(--text); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
@@ -228,109 +234,181 @@ function getNextNumEntrega(entregas) {
   return nums.length > 0 ? Math.max(...nums) + 1 : 1;
 }
 
-// Asigna numEntrega a todas las entregas que no lo tengan (orden cronológico)
-// Devuelve {entregas, changed}
-function asignarNumerosEntrega(entregas) {
-  const existingNums = new Set(
-    entregas.filter(e => e.numEntrega).map(e => parseInt(e.numEntrega, 10))
-  );
-  const sinNumero = [...entregas]
-    .filter(e => !e.numEntrega)
-    .sort((a, b) => (a.fecha || "").localeCompare(b.fecha || ""));
+const SUPABASE_URL = "https://szoatrosdwrvcowdrtwb.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6b2F0cm9zZHdydmNvd2RydHdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwOTc1MDksImV4cCI6MjA5NDY3MzUwOX0.fkP-9NFv55tlUSrh2-_MwPXiMDS4RwVuq6SP9yYojCo";
 
-  if (sinNumero.length === 0) return { entregas, changed: false };
+// ─── SESIÓN / LOGIN ─────────────────────────────────────────────────────────
+// Con las tablas protegidas por RLS (auth.role() = 'authenticated'), la clave
+// pública anon ya no da acceso a ningún dato por sí sola: hace falta una
+// sesión de login válida (access_token) para leer o escribir.
+const SESSION_KEY = "ri-session";
+let _session = null;
+let _onAuthExpired = null; // callback que fuerza volver al login si la sesión ya no vale
 
-  let counter = existingNums.size > 0 ? Math.max(...existingNums) + 1 : 1;
-  const mapa = {};
-  sinNumero.forEach(e => {
-    mapa[e.id] = formatNumE(counter++);
-  });
-
-  const result = entregas.map(e => e.numEntrega ? e : { ...e, numEntrega: mapa[e.id] || formatNumE(counter++) });
-  return { entregas: result, changed: true };
+function loadSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    _session = raw ? JSON.parse(raw) : null;
+  } catch { _session = null; }
+  return _session;
 }
 
-const SUPABASE_URL = "https://szoatrosdwrvcowdrtwb.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6b2F0cm9zZHdydmNvd2RydHdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwOTc1MDksImV4cCI6MjA5NDY3MzUwOX0.fkP-9NFv55tlUSrh2-_MwPXiMDS4RwVuq6SP9yYojCo";
-const SB_HEADERS = {
-  "Content-Type": "application/json",
-  "apikey": SUPABASE_KEY,
-  "Authorization": "Bearer " + SUPABASE_KEY,
-  "Prefer": "return=minimal"
+function saveSession(session) {
+  _session = session;
+  if (session) localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  else localStorage.removeItem(SESSION_KEY);
+}
+
+async function login(email, password) {
+  const res = await fetch(SUPABASE_URL + "/auth/v1/token?grant_type=password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_KEY },
+    body: JSON.stringify({ email, password }),
+  });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error_description || body.msg || "Email o contraseña incorrectos");
+  saveSession({
+    access_token: body.access_token,
+    refresh_token: body.refresh_token,
+    expires_at: Math.floor(Date.now() / 1000) + body.expires_in,
+    email: body.user?.email || email,
+  });
+}
+
+async function refreshSession() {
+  if (!_session || !_session.refresh_token) { saveSession(null); return; }
+  try {
+    const res = await fetch(SUPABASE_URL + "/auth/v1/token?grant_type=refresh_token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_KEY },
+      body: JSON.stringify({ refresh_token: _session.refresh_token }),
+    });
+    if (!res.ok) { saveSession(null); return; }
+    const body = await res.json();
+    saveSession({
+      access_token: body.access_token,
+      refresh_token: body.refresh_token,
+      expires_at: Math.floor(Date.now() / 1000) + body.expires_in,
+      email: body.user?.email || _session.email,
+    });
+  } catch { saveSession(null); }
+}
+
+function logout() {
+  saveSession(null);
+}
+
+async function authHeaders() {
+  if (_session && _session.expires_at - 30 < Math.floor(Date.now() / 1000)) {
+    await refreshSession();
+  }
+  return {
+    "Content-Type": "application/json",
+    "apikey": SUPABASE_ANON_KEY,
+    "Authorization": "Bearer " + (_session ? _session.access_token : SUPABASE_ANON_KEY),
+  };
+}
+
+// ─── ACCESO A DATOS: una fila por custodia/entrega/préstamo ────────────────
+// Cada operación toca solo su propia fila (insert/update/delete puntual) en
+// vez de sobreescribir un bloque JSON entero: dos operarios guardando a la
+// vez ya no pueden pisarse el trabajo mutuamente.
+
+async function apiFetch(path, options = {}) {
+  const headers = { ...(await authHeaders()), ...(options.headers || {}) };
+  const res = await fetch(SUPABASE_URL + path, { ...options, headers });
+  if (res.status === 401 || res.status === 403) {
+    saveSession(null);
+    if (_onAuthExpired) _onAuthExpired();
+    throw new Error("Sesión caducada, vuelve a iniciar sesión.");
+  }
+  if (!res.ok) throw new Error("Error de red (" + res.status + ")");
+  return res;
+}
+
+async function dbSelect(table) {
+  const res = await apiFetch(`/rest/v1/${table}?select=*`);
+  return res.json();
+}
+
+async function dbInsert(table, rows) {
+  const res = await apiFetch(`/rest/v1/${table}`, {
+    method: "POST",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify(rows),
+  });
+  return res.json();
+}
+
+async function dbUpdate(table, id, patchRow) {
+  const res = await apiFetch(`/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify(patchRow),
+  });
+  return res.json();
+}
+
+async function dbUpdateWhere(table, column, value, patchRow) {
+  const res = await apiFetch(`/rest/v1/${table}?${column}=eq.${encodeURIComponent(value)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify(patchRow),
+  });
+  return res.json();
+}
+
+async function dbDelete(table, id) {
+  await apiFetch(`/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+// ─── MAPEO camelCase (app) ↔ snake_case (columnas de Supabase) ─────────────
+const CUSTODIA_FIELDS = {
+  cliente: "cliente", albaran: "albaran", facturaLibre: "factura_libre",
+  operarioCustodia: "operario_custodia", fecha: "fecha", referencia: "referencia",
+  producto: "producto", almacen: "almacen", udsTotales: "uds_totales",
+  udsEntregadas: "uds_entregadas", notas: "notas", promSkrit: "prom_skrit",
+};
+const ENTREGA_FIELDS = {
+  custodiaId: "custodia_id", fecha: "fecha", uds: "uds", albaran: "albaran",
+  operario: "operario", notas: "notas", numEntrega: "num_entrega", grupoEntrega: "grupo_entrega",
+};
+const PRESTAMO_FIELDS = {
+  custodiaId: "custodia_id", uds: "uds", clienteDeutor: "cliente_deudor",
+  motivo: "motivo", fecha: "fecha", saldado: "saldado",
 };
 
-// ─── Timestamp del último dato cargado/guardado ────────────────────────────
-// Permite que el polling detecte cambios de OTROS usuarios sin sobreescribir
-// los cambios del usuario actual.
-let _lastUpdatedAt = null;
-let _isSaving = false;
+function toRow(obj, fields) {
+  const row = {};
+  if (obj.id !== undefined) row.id = obj.id;
+  for (const [js, db] of Object.entries(fields)) if (obj[js] !== undefined) row[db] = obj[js];
+  return row;
+}
+function fromRow(row, fields) {
+  const obj = { id: row.id };
+  for (const [js, db] of Object.entries(fields)) obj[js] = row[db];
+  return obj;
+}
 
 async function loadData() {
-  try {
-    const res = await fetch(
-      SUPABASE_URL + "/rest/v1/app_state?id=eq.main&select=data,updated_at",
-      { headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY } }
-    );
-    if (res.ok) {
-      const rows = await res.json();
-      if (rows.length > 0 && rows[0].data) {
-        _lastUpdatedAt = rows[0].updated_at;
-        const parsed = rows[0].data;
-        if (!parsed.custodias) parsed.custodias = [];
-        if (!parsed.entregas)  parsed.entregas  = [];
-        if (!parsed.prestamos) parsed.prestamos = [];
-        // Asignar numEntrega a entregas históricas si no lo tienen
-        const { entregas: eNumeradas, changed } = asignarNumerosEntrega(parsed.entregas);
-        if (changed) {
-          parsed.entregas = eNumeradas;
-          saveData(parsed); // guardar en Supabase sin bloquear
-        }
-        return parsed;
-      }
-    }
-  } catch (e) { console.error("Error cargando datos:", e); }
-  return { custodias: [], entregas: [], prestamos: [] };
+  const [custRows, entRows, presRows] = await Promise.all([
+    dbSelect("custodias"), dbSelect("entregas"), dbSelect("prestamos"),
+  ]);
+  return {
+    custodias: custRows.map(r => fromRow(r, CUSTODIA_FIELDS)),
+    entregas: entRows.map(r => fromRow(r, ENTREGA_FIELDS)),
+    prestamos: presRows.map(r => fromRow(r, PRESTAMO_FIELDS)),
+  };
 }
 
-async function saveData(data) {
-  _isSaving = true;
-  try {
-    const res = await fetch(SUPABASE_URL + "/rest/v1/app_state?id=eq.main", {
-      method: "PATCH",
-      headers: { ...SB_HEADERS, "Prefer": "return=representation" },
-      body: JSON.stringify({ data: data, updated_at: new Date().toISOString() })
-    });
-    if (res.ok) {
-      const rows = await res.json();
-      // Actualizar el timestamp con el que devuelve el servidor
-      if (rows && rows.length > 0 && rows[0].updated_at) {
-        _lastUpdatedAt = rows[0].updated_at;
-      }
-    }
-  } catch (e) { console.error("Error guardando:", e); }
-  _isSaving = false;
-}
-
-// Polling inteligente: solo actualiza si el dato cambió en el servidor
-// (por otro usuario) y no hay un guardado en curso
+// Poll simple: cada 10s se refresca desde las tablas. Ya no hace falta
+// comparar timestamps ni bloquear por "guardado en curso": cada guardado es
+// atómico sobre su propia fila, así que un refresco nunca puede deshacer el
+// cambio de otro operario ni el propio.
 async function pollRemote(setData) {
-  if (_isSaving) return;
   try {
-    const res = await fetch(
-      SUPABASE_URL + "/rest/v1/app_state?id=eq.main&select=data,updated_at",
-      { headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY } }
-    );
-    if (!res.ok) return;
-    const rows = await res.json();
-    if (!rows.length) return;
-    const remoteTs = rows[0].updated_at;
-    if (remoteTs !== _lastUpdatedAt) {
-      // Dato más reciente de otro usuario → actualizar
-      _lastUpdatedAt = remoteTs;
-      const parsed = rows[0].data;
-      if (!parsed.prestamos) parsed.prestamos = [];
-      setData(parsed);
-    }
+    const fresh = await loadData();
+    setData(fresh);
   } catch (_) { /* ignorar errores de red en polling */ }
 }
 
@@ -1350,7 +1428,7 @@ function Dashboard({ data, isMobile, onNuevaCustodia, onNuevaEntrega, onEntrega,
           <div className="empty-sub">Elige un cliente, almacén o estado — o busca por texto</div>
           <div className="krafted">Krafted by <span>Yakoba Moreno</span></div>
           <div className="krafted" style={{ marginTop: 6 }}>Designed in <span style={{ color: "#002D5A" }}>Claude Code</span></div>
-          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>Gestor de Stocks y Custodias <span style={{ color: "var(--text-dim)" }}>v.8.0.4</span></div>
+          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>Gestor de Stocks y Custodias <span style={{ color: "var(--text-dim)" }}>v.8.1.0</span></div>
         </div>
       ) : filterEstado === "COMPLETAS" ? (
         entregasCliente.length === 0 ? (
@@ -2184,6 +2262,12 @@ function PanelConfig({ fontSize, onFontSize, onClose, data }) {
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v8.1.0", d:"Agosto 2026", items:[
+    "Login obligatorio: cada operario entra con su email y contraseña",
+    "Fin del riesgo de colisión al guardar: cada custodia/entrega/préstamo vive en su propia tabla, así dos operarios ya no pueden pisarse los cambios al guardar casi a la vez",
+    "La clave pública de Supabase deja de dar acceso a los datos sin haber iniciado sesión",
+    "Botón de cerrar sesión y email del operario visible en la cabecera",
+  ]},
   { v:"v8.0.4", d:"Agosto 2026", items:[
     "Copia de seguridad: exportar todos los datos a un archivo JSON desde Configuración",
     "Quitado el botón duplicado 'Crear PDF' (hacía lo mismo que 'Imprimir')",
@@ -2253,6 +2337,7 @@ const CHANGELOG = [
 ];
 
 const MANUAL_SECTIONS = [
+  { t:"Iniciar sesión", c:"Accede con el email y contraseña que te haya dado tu administrador. Solo las cuentas creadas para el equipo pueden entrar — no hay registro abierto. La sesión queda recordada en este dispositivo hasta que pulses el botón 🚪 de cerrar sesión en la cabecera." },
   { t:"Panel de Control", c:"Selecciona primero un Cliente para ver su stock. El estado por defecto es 'Activas'. Cambia a 'Completadas' para ver las entregas realizadas y poder editarlas. Los botones ✏️ editan la custodia y 🗑️ la eliminan (con confirmación)." },
   { t:"Nueva Custodia", c:"Pulsa '+ Nueva custodia'. Rellena Cliente (*), Referencia (*) y Unidades (*). El campo Responsable/Operario es obligatorio. La referencia sugiere productos ya registrados — al seleccionarla, la descripción se rellena automáticamente. El campo Nº Promoción Skrit es opcional." },
   { t:"Nueva Entrega", c:"Usa '🚚 Nueva entrega' para entregar varios productos a la vez. 3 pasos: 1) Selecciona cliente, 2) Introduce cantidades por línea, 3) Confirma con fecha y operario (obligatorio). Se genera un documento de 2 páginas para imprimir." },
@@ -2261,7 +2346,7 @@ const MANUAL_SECTIONS = [
   { t:"Pestaña Productos", c:"Vista de stock agrupada por referencia y almacén. Filtra por referencia o descripción. Permite editar referencia y descripción de forma masiva (aplica a todas las custodias con esa referencia). Muestra alerta ⚠️ si hay préstamos activos de esa referencia." },
   { t:"Histórico", c:"Timeline de todos los movimientos (custodias en verde, entregas en rojo), ordenado del más reciente al más antiguo. Usa los botones 👁 y 🖨️ de cada fila para previsualizar o reimprimir el documento original." },
   { t:"Préstamos temporales", c:"Botón ⚠️ naranja en cada fila activa. Registra que se tomaron unidades del stock de un cliente para uso urgente. Aparece como alerta roja parpadeante en el dashboard hasta que se salda." },
-  { t:"Sincronización", c:"Los datos se guardan en Supabase cada vez que realizas un cambio (ves 'Guardando...' brevemente). Cada 10 segundos la app comprueba si otro operario ha hecho cambios. Si el proyecto Supabase lleva más de 1 semana sin actividad puede pausarse — entra al dashboard de Supabase para reactivarlo." },
+  { t:"Sincronización", c:"Cada custodia, entrega y préstamo se guarda al momento en su propia fila de la base de datos (ves 'Guardando...' brevemente); dos operarios pueden trabajar a la vez sin pisarse los cambios. Cada 10 segundos la app refresca la vista por si otro operario ha añadido o cambiado algo. Si el proyecto Supabase lleva más de 1 semana sin actividad puede pausarse — entra al dashboard de Supabase para reactivarlo." },
   { t:"Copia de seguridad", c:"Desde el icono ⚙️ Configuración puedes pulsar 'Exportar datos (JSON)' para descargar un archivo con todas las custodias, entregas y préstamos actuales. Útil como respaldo periódico." },
 ];
 
@@ -2308,7 +2393,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v8.0.4</div>
+                <div className="about-version">v8.1.0</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
@@ -2540,8 +2625,52 @@ function TabProductos({ data, onBulkUpdateRef }) {
   );
 }
 
+// ─── LOGIN ──────────────────────────────────────────────────────────────────
+function LoginScreen({ onLogin }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!email.trim() || !password) return;
+    setError(""); setLoading(true);
+    try {
+      await login(email.trim(), password);
+      onLogin();
+    } catch (err) {
+      setError(err.message || "No se pudo iniciar sesión");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="login-screen">
+      <form className="login-card" onSubmit={handleSubmit}>
+        <LogoAD size={48} darkMode={true} />
+        <div className="login-title">Recambios Ibiza</div>
+        <div className="login-sub">Gestor de Stock en Custodia</div>
+        <div className="form-group" style={{ marginTop: 24 }}>
+          <label>Email</label>
+          <input type="email" required autoFocus value={email} onChange={e => setEmail(e.target.value)} />
+        </div>
+        <div className="form-group">
+          <label>Contraseña</label>
+          <input type="password" required value={password} onChange={e => setPassword(e.target.value)} />
+        </div>
+        {error && <div className="login-error">⚠️ {error}</div>}
+        <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: "100%", marginTop: 8 }}>
+          {loading ? "Entrando..." : "Entrar"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 // ─── APP ──────────────────────────────────────────────────────────────────────
-function App() {
+function MainApp({ onLogout, userEmail }) {
   const [data, setData] = useState(null);
   const [tab, setTab] = useState("dashboard");
   const [modal, setModal] = useState(null);
@@ -2557,6 +2686,7 @@ function App() {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const [fontSize, setFontSize] = useState(() => localStorage.getItem('ri-fontsize') || 'md');
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('ri-theme') !== 'light');
+  const savingRef = useRef(false);
   useEffect(() => {
     const scales = { sm:'90%', md:'100%', lg:'112%', xl:'125%' };
     document.documentElement.style.fontSize = scales[fontSize] || '100%';
@@ -2568,63 +2698,107 @@ function App() {
   }, [darkMode]);
 
   useEffect(() => {
-    loadData().then(d => setData(d));
-    // Polling cada 10 segundos — solo actualiza si otro usuario cambió algo
-    const interval = setInterval(() => pollRemote(setData), 10000);
-    return () => clearInterval(interval);
+    _onAuthExpired = onLogout;
+    loadData().then(d => setData(d)).catch(() => {});
+    // Polling cada 10 segundos: cada guardado ya es atómico por fila, así que
+    // un refresco nunca puede deshacer el cambio de otro operario ni el propio.
+    const interval = setInterval(() => {
+      if (!savingRef.current) pollRemote(setData);
+    }, 10000);
+    return () => { clearInterval(interval); _onAuthExpired = null; };
   }, []);
 
-  const persist = useCallback(async (newData) => {
+  const persistGuard = useCallback(async (fn, errorMsg) => {
+    savingRef.current = true;
     setSaveStatus("saving");
-    await saveData(newData);
-    setSaveStatus("saved");
+    try {
+      await fn();
+    } catch (e) {
+      console.error(e);
+      alert(errorMsg);
+    } finally {
+      savingRef.current = false;
+      setSaveStatus("saved");
+    }
   }, []);
 
   const clientes = data ? [...new Set(data.custodias.map(c => c.cliente))].sort() : [];
 
-  const handleNuevaCustodia = (custodia) => {
-    const nd = { ...data, custodias: [...data.custodias, custodia] };
-    setData(nd); persist(nd); setModal(null);
-  };
+  const handleNuevaCustodia = (custodia) => persistGuard(async () => {
+    const [row] = await dbInsert('custodias', [toRow(custodia, CUSTODIA_FIELDS)]);
+    const saved = fromRow(row, CUSTODIA_FIELDS);
+    setData(d => ({ ...d, custodias: [...d.custodias, saved] }));
+    setModal(null);
+  }, "No se pudo guardar la custodia. Comprueba tu conexión e inténtalo de nuevo.");
 
-  const handleEntrega = (entregaData) => {
+  const handleEntrega = (entregaData) => persistGuard(async () => {
     const numE = formatNumE(getNextNumEntrega(data.entregas));
     const entregaConNum = { ...entregaData, numEntrega: numE };
-    const nc = data.custodias.map(c => c.id === entregaData.custodiaId ? { ...c, udsEntregadas: c.udsEntregadas + entregaData.uds } : c);
-    const nd = { ...data, custodias: nc, entregas: [...data.entregas, entregaConNum] };
-    setData(nd); persist(nd); setSelectedCustodia(null);
-  };
+    const custodia = data.custodias.find(c => c.id === entregaData.custodiaId);
+    const nuevasUds = custodia.udsEntregadas + entregaData.uds;
+    const [entRow] = await dbInsert('entregas', [toRow(entregaConNum, ENTREGA_FIELDS)]);
+    await dbUpdate('custodias', custodia.id, toRow({ udsEntregadas: nuevasUds }, CUSTODIA_FIELDS));
+    const savedEntrega = fromRow(entRow, ENTREGA_FIELDS);
+    setData(d => ({
+      ...d,
+      custodias: d.custodias.map(c => c.id === custodia.id ? { ...c, udsEntregadas: nuevasUds } : c),
+      entregas: [...d.entregas, savedEntrega],
+    }));
+    setSelectedCustodia(null);
+  }, "No se pudo registrar la entrega. Comprueba tu conexión e inténtalo de nuevo.");
 
-  const handleNuevaEntrega = (nuevasEntregas) => {
-    let custodias = [...data.custodias];
+  const handleNuevaEntrega = (nuevasEntregas) => persistGuard(async () => {
     let nextNum = getNextNumEntrega(data.entregas);
     const grupoId = uid(); // ID compartido para identificar la entrega múltiple
-    const numeradas = nuevasEntregas.map(e => {
-      const n = { ...e, numEntrega: formatNumE(nextNum++), grupoEntrega: grupoId };
-      custodias = custodias.map(c => c.id === e.custodiaId ? { ...c, udsEntregadas: c.udsEntregadas + e.uds } : c);
-      return n;
-    });
-    const nd = { ...data, custodias, entregas: [...data.entregas, ...numeradas] };
-    setData(nd); persist(nd); setShowNuevaEntrega(false);
-  };
+    const numeradas = nuevasEntregas.map(e => ({ ...e, numEntrega: formatNumE(nextNum++), grupoEntrega: grupoId }));
+    const rows = await dbInsert('entregas', numeradas.map(e => toRow(e, ENTREGA_FIELDS)));
+    const savedEntregas = rows.map(r => fromRow(r, ENTREGA_FIELDS));
+    // Sumar deltas por custodia (una línea puede repetir custodia) y actualizar cada una una sola vez
+    const deltaPorCustodia = {};
+    numeradas.forEach(e => { deltaPorCustodia[e.custodiaId] = (deltaPorCustodia[e.custodiaId] || 0) + e.uds; });
+    const actualizaciones = await Promise.all(Object.entries(deltaPorCustodia).map(async ([custodiaId, delta]) => {
+      const c = data.custodias.find(c => c.id === custodiaId);
+      const nuevasUds = c.udsEntregadas + delta;
+      await dbUpdate('custodias', custodiaId, toRow({ udsEntregadas: nuevasUds }, CUSTODIA_FIELDS));
+      return { custodiaId, nuevasUds };
+    }));
+    setData(d => ({
+      ...d,
+      custodias: d.custodias.map(c => {
+        const r = actualizaciones.find(r => r.custodiaId === c.id);
+        return r ? { ...c, udsEntregadas: r.nuevasUds } : c;
+      }),
+      entregas: [...d.entregas, ...savedEntregas],
+    }));
+    setShowNuevaEntrega(false);
+  }, "No se pudo registrar la entrega múltiple. Comprueba tu conexión e inténtalo de nuevo.");
 
-  const handlePrestamo = (prestamoData) => {
+  const handlePrestamo = (prestamoData) => persistGuard(async () => {
     // Préstamo: incrementa udsEntregadas (físicamente salen) + guarda deuda
-    const nc = data.custodias.map(c => c.id === prestamoData.custodiaId ? { ...c, udsEntregadas: c.udsEntregadas + prestamoData.uds } : c);
-    const nd = { ...data, custodias: nc, prestamos: [...(data.prestamos || []), prestamoData] };
-    setData(nd); persist(nd); setPrestamoTarget(null);
-  };
+    const custodia = data.custodias.find(c => c.id === prestamoData.custodiaId);
+    const nuevasUds = custodia.udsEntregadas + prestamoData.uds;
+    const [row] = await dbInsert('prestamos', [toRow(prestamoData, PRESTAMO_FIELDS)]);
+    await dbUpdate('custodias', custodia.id, toRow({ udsEntregadas: nuevasUds }, CUSTODIA_FIELDS));
+    const saved = fromRow(row, PRESTAMO_FIELDS);
+    setData(d => ({
+      ...d,
+      custodias: d.custodias.map(c => c.id === custodia.id ? { ...c, udsEntregadas: nuevasUds } : c),
+      prestamos: [...(d.prestamos || []), saved],
+    }));
+    setPrestamoTarget(null);
+  }, "No se pudo registrar el préstamo. Comprueba tu conexión e inténtalo de nuevo.");
 
-  const handleSaldarDeuda = (prestamoId) => {
-    const np = (data.prestamos || []).map(p => p.id === prestamoId ? { ...p, saldado: true } : p);
-    const nd = { ...data, prestamos: np };
-    setData(nd); persist(nd);
-  };
+  const handleSaldarDeuda = (prestamoId) => persistGuard(async () => {
+    await dbUpdate('prestamos', prestamoId, { saldado: true });
+    setData(d => ({ ...d, prestamos: (d.prestamos || []).map(p => p.id === prestamoId ? { ...p, saldado: true } : p) }));
+  }, "No se pudo saldar la deuda. Inténtalo de nuevo.");
 
-  const handleEditar = (updated) => {
-    const nd = { ...data, custodias: data.custodias.map(c => c.id === updated.id ? updated : c) };
-    setData(nd); persist(nd); setEditTarget(null);
-  };
+  const handleEditar = (updated) => persistGuard(async () => {
+    const [row] = await dbUpdate('custodias', updated.id, toRow(updated, CUSTODIA_FIELDS));
+    const saved = fromRow(row, CUSTODIA_FIELDS);
+    setData(d => ({ ...d, custodias: d.custodias.map(c => c.id === saved.id ? saved : c) }));
+    setEditTarget(null);
+  }, "No se pudieron guardar los cambios. Inténtalo de nuevo.");
 
   const handleFontSize = (key, scale) => {
     setFontSize(key);
@@ -2632,31 +2806,35 @@ function App() {
     document.documentElement.style.fontSize = scale;
   };
 
-  const handleBulkUpdateRef = (refOld, refNew, productoNew) => {
-    const nc = data.custodias.map(c =>
-      c.referencia === refOld ? { ...c, referencia: refNew, producto: productoNew } : c
-    );
-    const nd = { ...data, custodias: nc };
-    setData(nd); persist(nd);
-  };
+  const handleBulkUpdateRef = (refOld, refNew, productoNew) => persistGuard(async () => {
+    await dbUpdateWhere('custodias', 'referencia', refOld, { referencia: refNew, producto: productoNew });
+    setData(d => ({
+      ...d,
+      custodias: d.custodias.map(c => c.referencia === refOld ? { ...c, referencia: refNew, producto: productoNew } : c),
+    }));
+  }, "No se pudo actualizar el producto. Inténtalo de nuevo.");
 
-  const handleEditarEntrega = (entregaActualizada) => {
+  const handleEditarEntrega = (entregaActualizada) => persistGuard(async () => {
     const entregaOriginal = data.entregas.find(e => e.id === entregaActualizada.id);
     const difUds = Number(entregaActualizada.uds) - Number(entregaOriginal.uds);
-    const nuevasCustodias = data.custodias.map(c =>
-      c.id === entregaActualizada.custodiaId
-        ? { ...c, udsEntregadas: Math.max(0, c.udsEntregadas + difUds) }
-        : c
-    );
-    const nuevasEntregas = data.entregas.map(e => e.id === entregaActualizada.id ? entregaActualizada : e);
-    const nd = { ...data, custodias: nuevasCustodias, entregas: nuevasEntregas };
-    setData(nd); persist(nd); setEditEntregaTarget(null);
-  };
+    const custodia = data.custodias.find(c => c.id === entregaActualizada.custodiaId);
+    const nuevasUds = Math.max(0, custodia.udsEntregadas + difUds);
+    const [entRow] = await dbUpdate('entregas', entregaActualizada.id, toRow(entregaActualizada, ENTREGA_FIELDS));
+    await dbUpdate('custodias', custodia.id, toRow({ udsEntregadas: nuevasUds }, CUSTODIA_FIELDS));
+    const savedEntrega = fromRow(entRow, ENTREGA_FIELDS);
+    setData(d => ({
+      ...d,
+      entregas: d.entregas.map(e => e.id === savedEntrega.id ? savedEntrega : e),
+      custodias: d.custodias.map(c => c.id === custodia.id ? { ...c, udsEntregadas: nuevasUds } : c),
+    }));
+    setEditEntregaTarget(null);
+  }, "No se pudieron guardar los cambios de la entrega. Inténtalo de nuevo.");
 
-  const handleDelete = (id) => {
-    const nd = { ...data, custodias: data.custodias.filter(c => c.id !== id) };
-    setData(nd); persist(nd); setDeleteTarget(null);
-  };
+  const handleDelete = (id) => persistGuard(async () => {
+    await dbDelete('custodias', id);
+    setData(d => ({ ...d, custodias: d.custodias.filter(c => c.id !== id) }));
+    setDeleteTarget(null);
+  }, "No se pudo eliminar la custodia. Inténtalo de nuevo.");
 
   const activasCnt = data ? data.custodias.filter(c => c.udsTotales - c.udsEntregadas > 0).length : 0;
   const deudasCnt = data ? (data.prestamos || []).filter(p => !p.saldado).length : 0;
@@ -2681,9 +2859,11 @@ function App() {
           <div className={`header-save ${saveStatus === "saved" ? "saved" : ""}`}>
             {saveStatus === "saving" ? "⟳ Guardando..." : "✓ Sincronizado"}
           </div>
+          {userEmail && !isMobile && <div className="header-save" title="Sesión iniciada">👤 {userEmail}</div>}
           <button className="btn btn-ghost btn-sm" onClick={() => setShowAyuda(true)} style={{ fontWeight:700 }}>❓ Ayuda</button>
           <button className="theme-btn-sq" onClick={() => setShowConfig(s => !s)} title="Configuración">⚙️</button>
           <button className="theme-btn-sq" onClick={() => setDarkMode(d => !d)} title={darkMode ? "Modo claro" : "Modo oscuro"}>{darkMode ? <span style={{color:"#f0c040",fontSize:16}}>☀</span> : <span style={{color:"#7090d0",fontSize:15}}>☽</span>}</button>
+          <button className="theme-btn-sq" onClick={onLogout} title="Cerrar sesión">🚪</button>
         </div>
       </header>
 
@@ -2761,6 +2941,20 @@ function App() {
   );
 }
 
+// ─── APP RAÍZ: gestiona la sesión de login ─────────────────────────────────
+function App() {
+  const [session, setSession] = useState(() => loadSession());
+
+  const handleLogout = useCallback(() => {
+    logout();
+    setSession(null);
+  }, []);
+
+  if (!session) {
+    return <LoginScreen onLogin={() => setSession(loadSession())} />;
+  }
+  return <MainApp key={session.email} onLogout={handleLogout} userEmail={session.email} />;
+}
 
     ReactDOM.createRoot(document.getElementById('root')).render(<App />);
   </script>
