@@ -36,7 +36,7 @@
   .theme-btn-sq { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; color: var(--text); font-weight: 700; }
   .theme-btn-sq:hover { border-color: var(--accent); background: var(--accent-dim); }
   @keyframes blink-red { 0%,100% { color: #E20613; } 50% { color: rgba(226,6,19,0.25); } }
-  .kpi-value.debt-alert { animation: blink-red 1.2s ease-in-out infinite; font-weight: 900; }
+  .kpi-value.debt-pulse { animation: blink-red 1.2s ease-in-out infinite; font-weight: 900; }
   .krafted { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-faint); margin-top: 20px; }
   .krafted span { color: #a8e63d; font-weight: 700; }
   [data-theme="light"] .krafted span { color: #002D5A; }
@@ -1273,7 +1273,14 @@ function Dashboard({ data, isMobile, onNuevaCustodia, onNuevaEntrega, onEntrega,
       <div className="dash-top">
       {deudasActivas.length > 0 && (
         <div style={{ marginBottom: 16 }}>
-          {deudasActivas.map(p => {
+          {isMobile ? (
+            <div className="debt-alert">
+              <span>⚠️</span>
+              <span style={{ flex: 1 }}>
+                <strong>{deudasActivas.length} {deudasActivas.length === 1 ? "deuda activa" : "deudas activas"}</strong>
+              </span>
+            </div>
+          ) : deudasActivas.map(p => {
             const cust = data.custodias.find(c => c.id === p.custodiaId);
             return (
               <div key={p.id} className="debt-alert">
@@ -1307,7 +1314,7 @@ function Dashboard({ data, isMobile, onNuevaCustodia, onNuevaEntrega, onEntrega,
         </div>
         <div className="kpi">
           <div className="kpi-label">Deudas activas</div>
-          <div className={`kpi-value ${deudasActivas.length > 0 ? "debt-alert" : "green"}`}>{deudasActivas.length}</div>
+          <div className={`kpi-value ${deudasActivas.length > 0 ? "debt-pulse" : "green"}`}>{deudasActivas.length}</div>
           <div className="kpi-sub">{data.entregas.length} entregas totales</div>
         </div>
       </div>
