@@ -131,10 +131,6 @@
   .loader { display: flex; align-items: center; justify-content: center; min-height: 300px; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text-dim); gap: 10px; }
   .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .pdf-drop { border: 2px dashed var(--border); border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-dim); margin-bottom: 16px; }
-  .pdf-drop:hover, .pdf-drop.dragging { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
-  .pdf-drop.loading { border-color: var(--accent); animation: pulse 1.5s ease-in-out infinite; }
-  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
   .debt-alert { background: rgba(226,6,19,0.08); border: 1px solid rgba(226,6,19,0.3); border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #E20613; margin-bottom: 8px; }
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: var(--bg); }
@@ -253,9 +249,6 @@ function asignarNumerosEntrega(entregas) {
   const result = entregas.map(e => e.numEntrega ? e : { ...e, numEntrega: mapa[e.id] || formatNumE(counter++) });
   return { entregas: result, changed: true };
 }
-
-// ─── STORAGE HELPERS ────────────────────────────────────────────────────────
-const STORAGE_KEY = "recambios-ibiza-custodia-v2";
 
 const SUPABASE_URL = "https://szoatrosdwrvcowdrtwb.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6b2F0cm9zZHdydmNvd2RydHdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwOTc1MDksImV4cCI6MjA5NDY3MzUwOX0.fkP-9NFv55tlUSrh2-_MwPXiMDS4RwVuq6SP9yYojCo";
@@ -524,11 +517,6 @@ function StatusTag({ entregadas, totales }) {
   return <span className="tag tag-blue">EN CUSTODIA</span>;
 }
 
-// ─── PDF READER via Claude API ────────────────────────────────────────────────
-async function extractAlbaranFromPDF(file) {
-  throw new Error("La extracción automática por IA no está disponible en la versión standalone. Rellena el formulario manualmente.");
-}
-
 // ─── MODAL NUEVA CUSTODIA ─────────────────────────────────────────────────────
 function ModalNuevaCustodia({ onClose, onSave, clientes, custodias = [] }) {
   // Catálogo de referencias → producto construido desde custodias existentes
@@ -537,7 +525,7 @@ function ModalNuevaCustodia({ onClose, onSave, clientes, custodias = [] }) {
   const refList = Object.keys(refCatalog).sort();
 
   const [form, setForm] = useState({
-    cliente: "", albaran: "", facturaLibre: "", operarioCustodia: "",
+    cliente: "", albaran: "", facturaLibre: "", operarioCustodia: "", promSkrit: "",
     fecha: new Date().toISOString().split("T")[0],
     referencia: "", producto: "", almacen: "CENTRAL", udsTotales: "", notas: ""
   });
@@ -559,10 +547,6 @@ function ModalNuevaCustodia({ onClose, onSave, clientes, custodias = [] }) {
         <div className="modal-title">📦 Nueva Custodia</div>
         <div className="modal-sub">Registra un nuevo lote de stock en custodia para un cliente</div>
 
-        <div className="pdf-drop" style={{ cursor: "default", opacity: 0.5 }}>
-          📄 Extracción automática desde PDF · Solo disponible en la versión Claude.ai
-        </div>
-
         <div className="form-grid">
           <div className="form-group">
             <label>Cliente *</label>
@@ -580,6 +564,10 @@ function ModalNuevaCustodia({ onClose, onSave, clientes, custodias = [] }) {
           <div className="form-group">
             <label>Responsable / Operario *</label>
             <input value={form.operarioCustodia} onChange={e => set("operarioCustodia", e.target.value)} placeholder="Nombre de quien registra la custodia" style={{ borderColor: !form.operarioCustodia ? "var(--accent)" : "var(--border)" }} />
+          </div>
+          <div className="form-group">
+            <label>Nº Promoción Skrit</label>
+            <input value={form.promSkrit} onChange={e => set("promSkrit", e.target.value)} />
           </div>
           <div className="form-group">
             <label>Referencia *</label>
@@ -1362,7 +1350,7 @@ function Dashboard({ data, isMobile, onNuevaCustodia, onNuevaEntrega, onEntrega,
           <div className="empty-sub">Elige un cliente, almacén o estado — o busca por texto</div>
           <div className="krafted">Krafted by <span>Yakoba Moreno</span></div>
           <div className="krafted" style={{ marginTop: 6 }}>Designed in <span style={{ color: "#002D5A" }}>Claude Code</span></div>
-          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>Gestor de Stocks y Custodias <span style={{ color: "var(--text-dim)" }}>v.8.0.3</span></div>
+          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>Gestor de Stocks y Custodias <span style={{ color: "var(--text-dim)" }}>v.8.0.4</span></div>
         </div>
       ) : filterEstado === "COMPLETAS" ? (
         entregasCliente.length === 0 ? (
@@ -1827,8 +1815,7 @@ function TabCustodias({ data }) {
               <div className="section-sub">{porCliente.length} líneas activas · {porCliente.reduce((s,c)=>s+(c.udsTotales-c.udsEntregadas),0)} uds. pendientes</div>
             </div>
             <div style={{ display:"flex", gap:8 }}>
-              <button className="btn btn-ghost" onClick={() => printCustodiasDoc(`Stock en custodia — ${filterCliente}`, porCliente)}>🖨️ Imprimir</button>
-              <button className="btn btn-primary" onClick={() => printCustodiasDoc(`Stock en custodia — ${filterCliente}`, porCliente)}>📄 Crear PDF</button>
+              <button className="btn btn-primary" onClick={() => printCustodiasDoc(`Stock en custodia — ${filterCliente}`, porCliente)}>🖨️ Imprimir</button>
             </div>
           </div>
           <div className="table-wrap">
@@ -1872,8 +1859,7 @@ function TabCustodias({ data }) {
               </div>
             </div>
             <div style={{ display:"flex", gap:8 }}>
-              <button className="btn btn-ghost" onClick={() => printCustodiasDoc(`Stock custodiado — Ref. ${filterRef}`, porRef)}>🖨️ Imprimir</button>
-              <button className="btn btn-primary" onClick={() => printCustodiasDoc(`Stock custodiado — Ref. ${filterRef}`, porRef)}>📄 Crear PDF</button>
+              <button className="btn btn-primary" onClick={() => printCustodiasDoc(`Stock custodiado — Ref. ${filterRef}`, porRef)}>🖨️ Imprimir</button>
             </div>
           </div>
           <div className="table-wrap">
@@ -2114,8 +2100,7 @@ function TabEntregas({ data }) {
               <div className="section-sub">{gruposCliente.length} operaciones · {totalCliente} unidades entregadas en total</div>
             </div>
             <div style={{ display:"flex", gap:8 }}>
-              <button className="btn btn-ghost" onClick={() => printEntregasDoc(`Entregas — ${filterCliente}`, porCliente)}>🖨️ Imprimir</button>
-              <button className="btn btn-primary" onClick={() => printEntregasDoc(`Entregas — ${filterCliente}`, porCliente)}>📄 Crear PDF</button>
+              <button className="btn btn-primary" onClick={() => printEntregasDoc(`Entregas — ${filterCliente}`, porCliente)}>🖨️ Imprimir</button>
             </div>
           </div>
           <GruposTable grupos={gruposCliente} data={data} />
@@ -2132,8 +2117,7 @@ function TabEntregas({ data }) {
               </div>
             </div>
             <div style={{ display:"flex", gap:8 }}>
-              <button className="btn btn-ghost" onClick={() => printEntregasDoc(`Entregas — Ref. ${filterRef}`, porRef)}>🖨️ Imprimir</button>
-              <button className="btn btn-primary" onClick={() => printEntregasDoc(`Entregas — Ref. ${filterRef}`, porRef)}>📄 Crear PDF</button>
+              <button className="btn btn-primary" onClick={() => printEntregasDoc(`Entregas — Ref. ${filterRef}`, porRef)}>🖨️ Imprimir</button>
             </div>
           </div>
           <EntregaTable filas={porRef} total={totalRef} />
@@ -2147,13 +2131,33 @@ function TabEntregas({ data }) {
 
 
 // ─── PANEL CONFIGURACIÓN ─────────────────────────────────────────────────────
-function PanelConfig({ fontSize, onFontSize, onClose }) {
+function PanelConfig({ fontSize, onFontSize, onClose, data }) {
   const sizes = [
     { key: 'sm',  label: 'A',  title: 'Pequeño',    scale: '90%'  },
     { key: 'md',  label: 'A',  title: 'Normal',     scale: '100%' },
     { key: 'lg',  label: 'A',  title: 'Grande',     scale: '112%' },
     { key: 'xl',  label: 'A',  title: 'Extra',      scale: '125%' },
   ];
+
+  const handleExport = () => {
+    const fecha = new Date().toISOString().split("T")[0];
+    const payload = {
+      exportadoEl: new Date().toISOString(),
+      custodias: data.custodias,
+      entregas: data.entregas,
+      prestamos: data.prestamos,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `backup-custodias-${fecha}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <>
       <div className="config-overlay" onClick={onClose} />
@@ -2171,6 +2175,8 @@ function PanelConfig({ fontSize, onFontSize, onClose }) {
             </button>
           ))}
         </div>
+        <div className="config-label" style={{ marginTop: 20 }}>Copia de seguridad</div>
+        <button className="btn btn-ghost" style={{ width: "100%" }} onClick={handleExport}>⬇️ Exportar datos (JSON)</button>
       </div>
     </>
   );
@@ -2178,6 +2184,15 @@ function PanelConfig({ fontSize, onFontSize, onClose }) {
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v8.0.4", d:"Agosto 2026", items:[
+    "Copia de seguridad: exportar todos los datos a un archivo JSON desde Configuración",
+    "Quitado el botón duplicado 'Crear PDF' (hacía lo mismo que 'Imprimir')",
+    "Ocultado el recuadro de extracción por IA desde PDF, que estaba deshabilitado",
+    "Campo 'Nº Promoción Skrit' disponible también al dar de alta una custodia",
+    "Fix: borde rojo no deseado alrededor del contador de Deudas activas",
+    "Aviso de deuda simplificado en móvil (una línea, sin botón Saldar)",
+    "Limpieza de código sin uso (STORAGE_KEY)",
+  ]},
   { v:"v7.9.5", d:"Junio 2026", items:[
     "Fix reimpresión desde Histórico (entregas simples y múltiples)",
     "Buscador inteligente en Panel de Control: resultados al escribir sin necesitar seleccionar cliente",
@@ -2239,14 +2254,15 @@ const CHANGELOG = [
 
 const MANUAL_SECTIONS = [
   { t:"Panel de Control", c:"Selecciona primero un Cliente para ver su stock. El estado por defecto es 'Activas'. Cambia a 'Completadas' para ver las entregas realizadas y poder editarlas. Los botones ✏️ editan la custodia y 🗑️ la eliminan (con confirmación)." },
-  { t:"Nueva Custodia", c:"Pulsa '+ Nueva custodia'. Rellena Cliente (*), Referencia (*) y Unidades (*). El campo Responsable/Operario es obligatorio. La referencia sugiere productos ya registrados — al seleccionarla, la descripción se rellena automáticamente." },
+  { t:"Nueva Custodia", c:"Pulsa '+ Nueva custodia'. Rellena Cliente (*), Referencia (*) y Unidades (*). El campo Responsable/Operario es obligatorio. La referencia sugiere productos ya registrados — al seleccionarla, la descripción se rellena automáticamente. El campo Nº Promoción Skrit es opcional." },
   { t:"Nueva Entrega", c:"Usa '🚚 Nueva entrega' para entregar varios productos a la vez. 3 pasos: 1) Selecciona cliente, 2) Introduce cantidades por línea, 3) Confirma con fecha y operario (obligatorio). Se genera un documento de 2 páginas para imprimir." },
-  { t:"Pestaña Custodias", c:"Filtra por cliente o referencia para ver el stock activo con botones Imprimir y Crear PDF. Ideal para dar información rápida sobre lo que tiene un cliente en almacén." },
-  { t:"Pestaña Entregas", c:"Filtra por cliente o referencia para ver todas las entregas realizadas, con su número de entrega automático (000001...). Botones Imprimir y PDF disponibles." },
+  { t:"Pestaña Custodias", c:"Filtra por cliente o referencia para ver el stock activo con el botón Imprimir. Ideal para dar información rápida sobre lo que tiene un cliente en almacén." },
+  { t:"Pestaña Entregas", c:"Filtra por cliente o referencia para ver todas las entregas realizadas, con su número de entrega automático (000001...). Botón Imprimir disponible." },
   { t:"Pestaña Productos", c:"Vista de stock agrupada por referencia y almacén. Filtra por referencia o descripción. Permite editar referencia y descripción de forma masiva (aplica a todas las custodias con esa referencia). Muestra alerta ⚠️ si hay préstamos activos de esa referencia." },
   { t:"Histórico", c:"Timeline de todos los movimientos (custodias en verde, entregas en rojo), ordenado del más reciente al más antiguo. Usa los botones 👁 y 🖨️ de cada fila para previsualizar o reimprimir el documento original." },
   { t:"Préstamos temporales", c:"Botón ⚠️ naranja en cada fila activa. Registra que se tomaron unidades del stock de un cliente para uso urgente. Aparece como alerta roja parpadeante en el dashboard hasta que se salda." },
   { t:"Sincronización", c:"Los datos se guardan en Supabase cada vez que realizas un cambio (ves 'Guardando...' brevemente). Cada 10 segundos la app comprueba si otro operario ha hecho cambios. Si el proyecto Supabase lleva más de 1 semana sin actividad puede pausarse — entra al dashboard de Supabase para reactivarlo." },
+  { t:"Copia de seguridad", c:"Desde el icono ⚙️ Configuración puedes pulsar 'Exportar datos (JSON)' para descargar un archivo con todas las custodias, entregas y préstamos actuales. Útil como respaldo periódico." },
 ];
 
 function PanelAyuda({ onClose }) {
@@ -2292,7 +2308,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v7.9.5</div>
+                <div className="about-version">v8.0.4</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
@@ -2708,7 +2724,7 @@ function App() {
         </div>{/* end main-inner */}
       </main>
 
-      {showConfig && <PanelConfig fontSize={fontSize} onFontSize={handleFontSize} onClose={() => setShowConfig(false)} />}
+      {showConfig && <PanelConfig fontSize={fontSize} onFontSize={handleFontSize} onClose={() => setShowConfig(false)} data={data} />}
       {showAyuda && <PanelAyuda onClose={() => setShowAyuda(false)} />}
       {editEntregaTarget && (() => {
         const custodia = data.custodias.find(c => c.id === editEntregaTarget.custodiaId);
