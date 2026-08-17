@@ -57,7 +57,7 @@
   .badge { background: var(--accent); color: #fff; border-radius: 10px; padding: 1px 6px; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; }
   .badge-warn { background: #E20613; }
   .main { flex: 1; padding: 28px; max-width: 1400px; width: 100%; margin: 0 auto; }
-  .kpis { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 24px; }
+  .kpis { display: grid; grid-template-columns: repeat(5,1fr); gap: 14px; margin-bottom: 24px; }
   .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; transition: box-shadow 0.2s; }
   .kpi:hover { box-shadow: 0 4px 16px rgba(226,6,19,0.1); }
   .kpi-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
@@ -137,7 +137,7 @@
   ::-webkit-scrollbar-track { background: var(--bg); }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
-  @media (max-width: 768px) { .kpis { grid-template-columns: 1fr 1fr; } .form-grid { grid-template-columns: 1fr; } .main { padding: 16px; } .form-group.full { grid-column: auto; } }
+  @media (max-width: 768px) { .kpis { grid-template-columns: 1fr 1fr; } .kpis .kpi:nth-child(5) { grid-column: 1 / -1; } .form-grid { grid-template-columns: 1fr; } .main { padding: 16px; } .form-group.full { grid-column: auto; } }
 
   /* ── Mobile ── */
   @media (max-width: 640px) {
@@ -440,6 +440,18 @@ function fmt(dateStr) {
 
 function fmtNow() {
   return new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+// Estima los litros por unidad a partir del texto libre de "Descripción del
+// producto" (ej. "MDX+ 5W40 5L" → 5, "REFRIGERANTE 500ML" → 0.5). Es una
+// aproximación: si el texto no trae un patrón reconocible, cuenta como 0.
+function parseLitrosPorUnidad(producto) {
+  if (!producto) return 0;
+  const enMl = producto.match(/(\d+(?:[.,]\d+)?)\s*ML\b/i);
+  if (enMl) return parseFloat(enMl[1].replace(",", ".")) / 1000;
+  const enL = producto.match(/(\d+(?:[.,]\d+)?)\s*L\b/i);
+  if (enL) return parseFloat(enL[1].replace(",", "."));
+  return 0;
 }
 
 // ─── AD PARTS LOGO SVG ───────────────────────────────────────────────────────
@@ -1345,6 +1357,10 @@ function Dashboard({ data, isMobile, onNuevaCustodia, onNuevaEntrega, onEntrega,
   const entregadasUds = data.custodias.reduce((s, c) => s + c.udsEntregadas, 0);
   const activasCnt = data.custodias.filter(c => c.udsTotales - c.udsEntregadas > 0).length;
   const clientesCnt = new Set(data.custodias.map(c => c.cliente)).size;
+  const litrosCustodia = data.custodias.reduce((s, c) => {
+    const pendientes = c.udsTotales - c.udsEntregadas;
+    return pendientes > 0 ? s + pendientes * parseLitrosPorUnidad(c.producto) : s;
+  }, 0);
   const deudasActivas = (data.prestamos || []).filter(p => !p.saldado);
 
   return (
@@ -1390,6 +1406,11 @@ function Dashboard({ data, isMobile, onNuevaCustodia, onNuevaEntrega, onEntrega,
           <div className="kpi-label">Unidades en almacén</div>
           <div className="kpi-value green">{totalUds - entregadasUds}</div>
           <div className="kpi-sub">pendientes de entrega</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-label">Litros en custodia</div>
+          <div className="kpi-value">{Math.round(litrosCustodia).toLocaleString("es-ES")}</div>
+          <div className="kpi-sub">estimado, según descripción</div>
         </div>
         <div className="kpi">
           <div className="kpi-label">Deudas activas</div>
@@ -1441,7 +1462,7 @@ function Dashboard({ data, isMobile, onNuevaCustodia, onNuevaEntrega, onEntrega,
           <div className="empty-sub">Elige un cliente, almacén o estado — o busca por texto</div>
           <div className="krafted">Krafted by <span>Yakoba Moreno</span></div>
           <div className="krafted" style={{ marginTop: 6 }}>Designed in <span style={{ color: "#002D5A" }}>Claude Code</span></div>
-          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>Gestor de Stocks y Custodias <span style={{ color: "var(--text-dim)" }}>v.8.1.1</span></div>
+          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>Gestor de Stocks y Custodias <span style={{ color: "var(--text-dim)" }}>v.8.1.2</span></div>
         </div>
       ) : filterEstado === "COMPLETAS" ? (
         entregasCliente.length === 0 ? (
@@ -2277,6 +2298,11 @@ function PanelConfig({ fontSize, onFontSize, onClose, data, onChangePassword }) 
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v8.1.2", d:"Agosto 2026", items:[
+    "Nueva tarjeta 'Litros en custodia' en el Panel de Control, entre Unidades en almacén y Deudas activas",
+    "El dato es una estimación automática: busca patrones tipo '5L' o '500ML' en la descripción del producto de cada custodia activa",
+    "Panel de KPIs a 5 columnas en escritorio; en móvil, Deudas activas pasa a ocupar el ancho completo para no dejar una tarjeta suelta",
+  ]},
   { v:"v8.1.1", d:"Agosto 2026", items:[
     "Nuevo: cambiar tu propia contraseña desde ⚙️ Configuración → Cuenta",
   ]},
@@ -2357,7 +2383,7 @@ const CHANGELOG = [
 const MANUAL_SECTIONS = [
   { t:"Iniciar sesión", c:"Accede con el email y contraseña que te haya dado tu administrador. Solo las cuentas creadas para el equipo pueden entrar — no hay registro abierto. La sesión queda recordada en este dispositivo hasta que pulses el botón 🚪 de cerrar sesión en la cabecera." },
   { t:"Cambiar contraseña", c:"Desde ⚙️ Configuración → sección Cuenta → 'Cambiar contraseña', puedes poner una contraseña nueva para tu propia cuenta (mínimo 6 caracteres)." },
-  { t:"Panel de Control", c:"Selecciona primero un Cliente para ver su stock. El estado por defecto es 'Activas'. Cambia a 'Completadas' para ver las entregas realizadas y poder editarlas. Los botones ✏️ editan la custodia y 🗑️ la eliminan (con confirmación)." },
+  { t:"Panel de Control", c:"Selecciona primero un Cliente para ver su stock. El estado por defecto es 'Activas'. Cambia a 'Completadas' para ver las entregas realizadas y poder editarlas. Los botones ✏️ editan la custodia y 🗑️ la eliminan (con confirmación). La tarjeta 'Litros en custodia' es una estimación automática a partir del texto de la descripción del producto (ej. '5L', '500ML'); si no reconoce ningún patrón, esa custodia cuenta como 0 litros." },
   { t:"Nueva Custodia", c:"Pulsa '+ Nueva custodia'. Rellena Cliente (*), Referencia (*) y Unidades (*). El campo Responsable/Operario es obligatorio. La referencia sugiere productos ya registrados — al seleccionarla, la descripción se rellena automáticamente. El campo Nº Promoción Skrit es opcional." },
   { t:"Nueva Entrega", c:"Usa '🚚 Nueva entrega' para entregar varios productos a la vez. 3 pasos: 1) Selecciona cliente, 2) Introduce cantidades por línea, 3) Confirma con fecha y operario (obligatorio). Se genera un documento de 2 páginas para imprimir." },
   { t:"Pestaña Custodias", c:"Filtra por cliente o referencia para ver el stock activo con el botón Imprimir. Ideal para dar información rápida sobre lo que tiene un cliente en almacén." },
@@ -2412,7 +2438,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v8.1.1</div>
+                <div className="about-version">v8.1.2</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
