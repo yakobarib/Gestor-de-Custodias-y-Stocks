@@ -1309,6 +1309,36 @@ function ModalEditarEntrega({ entrega, custodia, onClose, onSave }) {
   );
 }
 
+// ─── NÚMERO ANIMADO (cuenta rápido hasta el valor final al montar) ─────────
+// Solo anima la primera vez que aparece en pantalla (ej. al entrar en la
+// pestaña); si el valor cambia después por una actualización en segundo
+// plano, se actualiza directo sin volver a animar.
+function AnimatedNumber({ value, duration = 700 }) {
+  const [display, setDisplay] = useState(0);
+  const animado = useRef(false);
+
+  useEffect(() => {
+    if (!animado.current) {
+      animado.current = true;
+      let raf;
+      let start = null;
+      const to = value;
+      const step = (ts) => {
+        if (start === null) start = ts;
+        const progress = Math.min((ts - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setDisplay(Math.round(to * eased));
+        if (progress < 1) raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
+      return () => cancelAnimationFrame(raf);
+    }
+    setDisplay(value);
+  }, [value]);
+
+  return display.toLocaleString("es-ES");
+}
+
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
 function Dashboard({ data, isMobile, onNuevaCustodia, onNuevaEntrega, onEntrega, onDelete, onEditar, onEditarEntrega, onPrestamo, onSaldarDeuda }) {
   const [search, setSearch] = useState("");
@@ -1394,27 +1424,27 @@ function Dashboard({ data, isMobile, onNuevaCustodia, onNuevaEntrega, onEntrega,
       <div className="kpis">
         <div className="kpi">
           <div className="kpi-label">Custodias activas</div>
-          <div className="kpi-value green">{activasCnt}</div>
+          <div className="kpi-value green"><AnimatedNumber value={activasCnt} /></div>
           <div className="kpi-sub">de {data.custodias.length} total</div>
         </div>
         <div className="kpi">
           <div className="kpi-label">Clientes con stock</div>
-          <div className="kpi-value">{clientesCnt}</div>
+          <div className="kpi-value"><AnimatedNumber value={clientesCnt} /></div>
           <div className="kpi-sub">clientes distintos</div>
         </div>
         <div className="kpi">
           <div className="kpi-label">Unidades en almacén</div>
-          <div className="kpi-value green">{totalUds - entregadasUds}</div>
+          <div className="kpi-value green"><AnimatedNumber value={totalUds - entregadasUds} /></div>
           <div className="kpi-sub">pendientes de entrega</div>
         </div>
         <div className="kpi">
           <div className="kpi-label">Litros en custodia</div>
-          <div className="kpi-value">{Math.round(litrosCustodia).toLocaleString("es-ES")}</div>
+          <div className="kpi-value"><AnimatedNumber value={Math.round(litrosCustodia)} /></div>
           <div className="kpi-sub">estimado, según descripción</div>
         </div>
         <div className="kpi">
           <div className="kpi-label">Deudas activas</div>
-          <div className={`kpi-value ${deudasActivas.length > 0 ? "debt-pulse" : "green"}`}>{deudasActivas.length}</div>
+          <div className={`kpi-value ${deudasActivas.length > 0 ? "debt-pulse" : "green"}`}><AnimatedNumber value={deudasActivas.length} /></div>
           <div className="kpi-sub">{data.entregas.length} entregas totales</div>
         </div>
       </div>
@@ -1462,7 +1492,7 @@ function Dashboard({ data, isMobile, onNuevaCustodia, onNuevaEntrega, onEntrega,
           <div className="empty-sub">Elige un cliente, almacén o estado — o busca por texto</div>
           <div className="krafted">Krafted by <span>Yakoba Moreno</span></div>
           <div className="krafted" style={{ marginTop: 6 }}>Designed in <span style={{ color: "#002D5A" }}>Claude Code</span></div>
-          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>Gestor de Stocks y Custodias <span style={{ color: "var(--text-dim)" }}>v.8.1.2</span></div>
+          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>Gestor de Stocks y Custodias <span style={{ color: "var(--text-dim)" }}>v.8.1.3</span></div>
         </div>
       ) : filterEstado === "COMPLETAS" ? (
         entregasCliente.length === 0 ? (
@@ -2298,6 +2328,9 @@ function PanelConfig({ fontSize, onFontSize, onClose, data, onChangePassword }) 
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v8.1.3", d:"Agosto 2026", items:[
+    "Los números de las tarjetas del Panel de Control cuentan rápido hasta su valor al entrar en la pestaña, en vez de aparecer directamente",
+  ]},
   { v:"v8.1.2", d:"Agosto 2026", items:[
     "Nueva tarjeta 'Litros en custodia' en el Panel de Control, entre Unidades en almacén y Deudas activas",
     "El dato es una estimación automática: busca patrones tipo '5L' o '500ML' en la descripción del producto de cada custodia activa",
@@ -2438,7 +2471,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v8.1.2</div>
+                <div className="about-version">v8.1.3</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
