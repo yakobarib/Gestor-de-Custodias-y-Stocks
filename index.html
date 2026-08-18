@@ -669,10 +669,6 @@ function ModalNuevaCustodia({ onClose, onSave, clientes, custodias = [] }) {
             <input value={form.operarioCustodia} onChange={e => set("operarioCustodia", e.target.value)} placeholder="Nombre de quien registra la custodia" style={{ borderColor: !form.operarioCustodia ? "var(--accent)" : "var(--border)" }} />
           </div>
           <div className="form-group">
-            <label>Nº Promoción Skrit</label>
-            <input value={form.promSkrit} onChange={e => set("promSkrit", e.target.value)} />
-          </div>
-          <div className="form-group">
             <label>Referencia *</label>
             <input
               list="ref-catalog-list"
@@ -687,6 +683,10 @@ function ModalNuevaCustodia({ onClose, onSave, clientes, custodias = [] }) {
             <datalist id="ref-catalog-list">
               {refList.map(r => <option key={r} value={r}>{refCatalog[r]}</option>)}
             </datalist>
+          </div>
+          <div className="form-group">
+            <label>Nº Promoción Skrit</label>
+            <input value={form.promSkrit} onChange={e => set("promSkrit", e.target.value)} />
           </div>
           <div className="form-group">
             <label>Unidades totales *</label>
