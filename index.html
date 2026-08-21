@@ -1340,7 +1340,7 @@ function AnimatedNumber({ value, duration = 700 }) {
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
-function Dashboard({ data, isMobile, onNuevaCustodia, onNuevaEntrega, onEntrega, onDelete, onEditar, onEditarEntrega, onPrestamo, onSaldarDeuda }) {
+function Dashboard({ data, isMobile, onNuevaCustodia, onNuevaEntrega, onEntrega, onDelete, onEditar, onEditarEntrega, onDeleteEntrega, onPrestamo, onSaldarDeuda }) {
   const [search, setSearch] = useState("");
   const [filterCliente, setFilterCliente] = useState("");
   const [filterAlmacen, setFilterAlmacen] = useState("");
@@ -1492,7 +1492,7 @@ function Dashboard({ data, isMobile, onNuevaCustodia, onNuevaEntrega, onEntrega,
           <div className="empty-sub">Elige un cliente, almacén o estado — o busca por texto</div>
           <div className="krafted">Krafted by <span>Yakoba Moreno</span></div>
           <div className="krafted" style={{ marginTop: 6 }}>Designed in <span style={{ color: "#002D5A" }}>Claude Code</span></div>
-          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>Gestor de Stocks y Custodias <span style={{ color: "var(--text-dim)" }}>v.8.1.3</span></div>
+          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>Gestor de Stocks y Custodias <span style={{ color: "var(--text-dim)" }}>v.8.1.4</span></div>
         </div>
       ) : filterEstado === "COMPLETAS" ? (
         entregasCliente.length === 0 ? (
@@ -1519,9 +1519,11 @@ function Dashboard({ data, isMobile, onNuevaCustodia, onNuevaEntrega, onEntrega,
                     <td style={{ textAlign:"right", fontWeight:700, color:"var(--accent)" }}>{e.uds}</td>
                     <td style={{ color:"var(--text-dim)" }}>{e.operario || "—"}</td>
                     <td style={{ color:"var(--text-dim)" }}>{e.albaran || "—"}</td>
-                    <td>
+                    <td style={{ display:"flex", gap:6 }}>
                       <button className="btn btn-sm" style={{ background:"rgba(0,45,90,0.1)", color:"var(--blue2)", border:"1px solid rgba(0,45,90,0.2)" }}
                         onClick={() => onEditarEntrega(e)} title="Editar esta entrega">✏️</button>
+                      <button className="btn btn-sm" style={{ background:"rgba(226,6,19,0.1)", color:"var(--accent)", border:"1px solid rgba(226,6,19,0.2)" }}
+                        onClick={() => onDeleteEntrega(e)} title="Eliminar esta entrega y devolver las unidades al stock">🗑️</button>
                     </td>
                   </tr>
                 ))}
@@ -2328,6 +2330,11 @@ function PanelConfig({ fontSize, onFontSize, onClose, data, onChangePassword }) 
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v8.1.4", d:"Agosto 2026", items:[
+    "Nuevo botón 🗑️ para eliminar una entrega desde Panel de Control → Completadas",
+    "Al eliminar una entrega, sus unidades vuelven automáticamente al stock disponible de la custodia",
+    "Pensado para corregir entregas registradas por error (producto equivocado, etc.) sin tener que ajustar el stock a mano",
+  ]},
   { v:"v8.1.3", d:"Agosto 2026", items:[
     "Los números de las tarjetas del Panel de Control cuentan rápido hasta su valor al entrar en la pestaña, en vez de aparecer directamente",
   ]},
@@ -2416,7 +2423,7 @@ const CHANGELOG = [
 const MANUAL_SECTIONS = [
   { t:"Iniciar sesión", c:"Accede con el email y contraseña que te haya dado tu administrador. Solo las cuentas creadas para el equipo pueden entrar — no hay registro abierto. La sesión queda recordada en este dispositivo hasta que pulses el botón 🚪 de cerrar sesión en la cabecera." },
   { t:"Cambiar contraseña", c:"Desde ⚙️ Configuración → sección Cuenta → 'Cambiar contraseña', puedes poner una contraseña nueva para tu propia cuenta (mínimo 6 caracteres)." },
-  { t:"Panel de Control", c:"Selecciona primero un Cliente para ver su stock. El estado por defecto es 'Activas'. Cambia a 'Completadas' para ver las entregas realizadas y poder editarlas. Los botones ✏️ editan la custodia y 🗑️ la eliminan (con confirmación). La tarjeta 'Litros en custodia' es una estimación automática a partir del texto de la descripción del producto (ej. '5L', '500ML'); si no reconoce ningún patrón, esa custodia cuenta como 0 litros." },
+  { t:"Panel de Control", c:"Selecciona primero un Cliente para ver su stock. El estado por defecto es 'Activas'. Cambia a 'Completadas' para ver las entregas realizadas y poder editarlas o eliminarlas: en esa vista, ✏️ edita la entrega (fecha, unidades, operario, notas) y 🗑️ la elimina por completo, devolviendo automáticamente sus unidades al stock de la custodia — útil si se registró una entrega equivocada. En la vista de custodias, ✏️ edita la custodia y 🗑️ la elimina (con confirmación). La tarjeta 'Litros en custodia' es una estimación automática a partir del texto de la descripción del producto (ej. '5L', '500ML'); si no reconoce ningún patrón, esa custodia cuenta como 0 litros." },
   { t:"Nueva Custodia", c:"Pulsa '+ Nueva custodia'. Rellena Cliente (*), Referencia (*) y Unidades (*). El campo Responsable/Operario es obligatorio. La referencia sugiere productos ya registrados — al seleccionarla, la descripción se rellena automáticamente. El campo Nº Promoción Skrit es opcional." },
   { t:"Nueva Entrega", c:"Usa '🚚 Nueva entrega' para entregar varios productos a la vez. 3 pasos: 1) Selecciona cliente, 2) Introduce cantidades por línea, 3) Confirma con fecha y operario (obligatorio). Se genera un documento de 2 páginas para imprimir." },
   { t:"Pestaña Custodias", c:"Filtra por cliente o referencia para ver el stock activo con el botón Imprimir. Ideal para dar información rápida sobre lo que tiene un cliente en almacén." },
@@ -2471,7 +2478,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v8.1.3</div>
+                <div className="about-version">v8.1.4</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
@@ -2818,6 +2825,7 @@ function MainApp({ onLogout, userEmail }) {
   const [editTarget, setEditTarget] = useState(null);
   const [editEntregaTarget, setEditEntregaTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteEntregaTarget, setDeleteEntregaTarget] = useState(null);
   const [saveStatus, setSaveStatus] = useState("saved");
   const [showAyuda, setShowAyuda] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
@@ -2975,6 +2983,22 @@ function MainApp({ onLogout, userEmail }) {
     setDeleteTarget(null);
   }, "No se pudo eliminar la custodia. Inténtalo de nuevo.");
 
+  const handleDeleteEntrega = (entrega) => persistGuard(async () => {
+    await dbDelete('entregas', entrega.id);
+    const custodia = data.custodias.find(c => c.id === entrega.custodiaId);
+    let nuevasUds = null;
+    if (custodia) {
+      nuevasUds = Math.max(0, custodia.udsEntregadas - entrega.uds);
+      await dbUpdate('custodias', custodia.id, toRow({ udsEntregadas: nuevasUds }, CUSTODIA_FIELDS));
+    }
+    setData(d => ({
+      ...d,
+      entregas: d.entregas.filter(e => e.id !== entrega.id),
+      custodias: custodia ? d.custodias.map(c => c.id === custodia.id ? { ...c, udsEntregadas: nuevasUds } : c) : d.custodias,
+    }));
+    setDeleteEntregaTarget(null);
+  }, "No se pudo eliminar la entrega. Inténtalo de nuevo.");
+
   const activasCnt = data ? data.custodias.filter(c => c.udsTotales - c.udsEntregadas > 0).length : 0;
   const deudasCnt = data ? (data.prestamos || []).filter(p => !p.saldado).length : 0;
 
@@ -3032,6 +3056,7 @@ function MainApp({ onLogout, userEmail }) {
             onDelete={c => !isMobile && setDeleteTarget(c)}
             onEditar={c => !isMobile && setEditTarget(c)}
             onEditarEntrega={e => !isMobile && setEditEntregaTarget(e)}
+            onDeleteEntrega={e => !isMobile && setDeleteEntregaTarget(e)}
             onPrestamo={c => !isMobile && setPrestamoTarget(c)}
             onSaldarDeuda={handleSaldarDeuda}
           />
@@ -3073,6 +3098,20 @@ function MainApp({ onLogout, userEmail }) {
           onClose={() => setDeleteTarget(null)}
         />
       )}
+      {deleteEntregaTarget && (() => {
+        const custodia = data.custodias.find(c => c.id === deleteEntregaTarget.custodiaId);
+        return (
+          <ModalConfirmar
+            titulo="¿Eliminar esta entrega?"
+            tipo="danger"
+            labelConfirm="🗑️ Sí, eliminar"
+            mensaje={`Vas a eliminar la entrega #${deleteEntregaTarget.numEntrega || "—"} de ${custodia?.cliente || "cliente desconocido"} · ${custodia?.referencia || "—"}`}
+            detalles={`${deleteEntregaTarget.uds} ud. · ${fmt(deleteEntregaTarget.fecha)} · Las unidades volverán al stock disponible de esa custodia.`}
+            onConfirm={() => handleDeleteEntrega(deleteEntregaTarget)}
+            onClose={() => setDeleteEntregaTarget(null)}
+          />
+        );
+      })()}
       {showNuevaEntrega && (
         <ModalNuevaEntrega data={data} onClose={() => setShowNuevaEntrega(false)} onSave={handleNuevaEntrega} />
       )}
