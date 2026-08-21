@@ -184,6 +184,8 @@
   .ayuda-section h3 { font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--accent); margin-bottom:8px; font-family:'JetBrains Mono',monospace; }
   .ayuda-section p, .ayuda-section li { font-size:12px; color:var(--text-dim); line-height:1.7; }
   .ayuda-section ul { padding-left:16px; }
+  .ayuda-section li { margin-bottom:4px; }
+  .ayuda-section li strong { color:var(--text); }
   .version-card { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:10px; }
   .version-num { font-family:'JetBrains Mono',monospace; font-weight:700; font-size:13px; color:var(--accent); }
   .version-date { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-faint); margin-left:8px; }
@@ -2421,18 +2423,68 @@ const CHANGELOG = [
 ];
 
 const MANUAL_SECTIONS = [
-  { t:"Iniciar sesión", c:"Accede con el email y contraseña que te haya dado tu administrador. Solo las cuentas creadas para el equipo pueden entrar — no hay registro abierto. La sesión queda recordada en este dispositivo hasta que pulses el botón 🚪 de cerrar sesión en la cabecera." },
-  { t:"Cambiar contraseña", c:"Desde ⚙️ Configuración → sección Cuenta → 'Cambiar contraseña', puedes poner una contraseña nueva para tu propia cuenta (mínimo 6 caracteres)." },
-  { t:"Panel de Control", c:"Selecciona primero un Cliente para ver su stock. El estado por defecto es 'Activas'. Cambia a 'Completadas' para ver las entregas realizadas y poder editarlas o eliminarlas: en esa vista, ✏️ edita la entrega (fecha, unidades, operario, notas) y 🗑️ la elimina por completo, devolviendo automáticamente sus unidades al stock de la custodia — útil si se registró una entrega equivocada. En la vista de custodias, ✏️ edita la custodia y 🗑️ la elimina (con confirmación). La tarjeta 'Litros en custodia' es una estimación automática a partir del texto de la descripción del producto (ej. '5L', '500ML'); si no reconoce ningún patrón, esa custodia cuenta como 0 litros." },
-  { t:"Nueva Custodia", c:"Pulsa '+ Nueva custodia'. Rellena Cliente (*), Referencia (*) y Unidades (*). El campo Responsable/Operario es obligatorio. La referencia sugiere productos ya registrados — al seleccionarla, la descripción se rellena automáticamente. El campo Nº Promoción Skrit es opcional." },
-  { t:"Nueva Entrega", c:"Usa '🚚 Nueva entrega' para entregar varios productos a la vez. 3 pasos: 1) Selecciona cliente, 2) Introduce cantidades por línea, 3) Confirma con fecha y operario (obligatorio). Se genera un documento de 2 páginas para imprimir." },
-  { t:"Pestaña Custodias", c:"Filtra por cliente o referencia para ver el stock activo con el botón Imprimir. Ideal para dar información rápida sobre lo que tiene un cliente en almacén." },
-  { t:"Pestaña Entregas", c:"Filtra por cliente o referencia para ver todas las entregas realizadas, con su número de entrega automático (000001...). Botón Imprimir disponible." },
-  { t:"Pestaña Productos", c:"Vista de stock agrupada por referencia y almacén. Filtra por referencia o descripción. Permite editar referencia y descripción de forma masiva (aplica a todas las custodias con esa referencia). Muestra alerta ⚠️ si hay préstamos activos de esa referencia." },
-  { t:"Histórico", c:"Timeline de todos los movimientos (custodias en verde, entregas en rojo), ordenado del más reciente al más antiguo. Usa los botones 👁 y 🖨️ de cada fila para previsualizar o reimprimir el documento original." },
-  { t:"Préstamos temporales", c:"Botón ⚠️ naranja en cada fila activa. Registra que se tomaron unidades del stock de un cliente para uso urgente. Aparece como alerta roja parpadeante en el dashboard hasta que se salda." },
-  { t:"Sincronización", c:"Cada custodia, entrega y préstamo se guarda al momento en su propia fila de la base de datos (ves 'Guardando...' brevemente); dos operarios pueden trabajar a la vez sin pisarse los cambios. Cada 10 segundos la app refresca la vista por si otro operario ha añadido o cambiado algo. Si el proyecto Supabase lleva más de 1 semana sin actividad puede pausarse — entra al dashboard de Supabase para reactivarlo." },
-  { t:"Copia de seguridad", c:"Desde el icono ⚙️ Configuración puedes pulsar 'Exportar datos (JSON)' para descargar un archivo con todas las custodias, entregas y préstamos actuales. Útil como respaldo periódico." },
+  { t:"Iniciar sesión", b:[
+    "Accede con el email y contraseña que te haya dado tu administrador.",
+    "Sin registro abierto: solo entran las cuentas creadas para el equipo.",
+    "Sesión recordada: queda guardada en este dispositivo hasta que pulses 🚪 en la cabecera para cerrarla.",
+  ]},
+  { t:"Cambiar contraseña", b:[
+    "Dónde: ⚙️ Configuración → sección Cuenta → 'Cambiar contraseña'.",
+    "Requisito: mínimo 6 caracteres.",
+  ]},
+  { t:"Panel de Control", b:[
+    "Filtro principal: selecciona primero un Cliente para ver su stock. El estado por defecto es 'Activas'.",
+    "Completadas: cambia el filtro de estado para ver las entregas ya realizadas de ese cliente.",
+    "✏️ Editar / 🗑️ Eliminar entrega: en la vista Completadas. Editar cambia fecha, unidades, operario o notas. Eliminar borra la entrega por completo y devuelve automáticamente sus unidades al stock — útil si se registró una entrega equivocada.",
+    "✏️ Editar / 🗑️ Eliminar custodia: en la vista de custodias activas, con confirmación antes de borrar.",
+    "Litros en custodia: estimación automática según la descripción del producto (ej. '5L', '500ML'); si no reconoce ningún patrón, esa custodia cuenta como 0 litros.",
+  ]},
+  { t:"Nueva Custodia", b:[
+    "Botón: '+ Nueva custodia'.",
+    "Obligatorios: Cliente, Referencia, Unidades totales y Responsable/Operario.",
+    "Autocompletado: al escribir una referencia ya registrada, la descripción del producto se rellena sola.",
+    "Opcional: Nº Promoción Skrit.",
+  ]},
+  { t:"Nueva Entrega", b:[
+    "Botón: '🚚 Nueva entrega', para entregar varios productos a la vez.",
+    "3 pasos: selecciona cliente → introduce cantidades por línea → confirma con fecha y operario (obligatorio).",
+    "Al confirmar se genera un documento de 2 páginas listo para imprimir.",
+  ]},
+  { t:"Pestaña Custodias", b:[
+    "Filtra por cliente o por referencia para ver el stock activo.",
+    "Botón Imprimir para dar información rápida sobre lo que tiene un cliente en almacén.",
+  ]},
+  { t:"Pestaña Entregas", b:[
+    "Filtra por cliente o por referencia para ver todas las entregas realizadas.",
+    "Numeración automática: cada entrega lleva su número (000001, 000002...).",
+    "Botón Imprimir disponible.",
+  ]},
+  { t:"Pestaña Productos", b:[
+    "Vista de stock agrupada por referencia y almacén.",
+    "Filtra por referencia o por descripción.",
+    "Edición masiva: cambia referencia o descripción y se aplica a todas las custodias con esa referencia.",
+    "Alerta ⚠️ si hay préstamos activos de esa referencia.",
+  ]},
+  { t:"Histórico", b:[
+    "Timeline de todos los movimientos: custodias en verde, entregas en rojo.",
+    "Orden: del más reciente al más antiguo.",
+    "👁 Previsualizar / 🖨️ Reimprimir el documento original de cada fila.",
+  ]},
+  { t:"Préstamos temporales", b:[
+    "Botón: ⚠️ naranja en cada fila de custodia activa.",
+    "Qué hace: registra que se tomaron unidades del stock de un cliente para uso urgente.",
+    "Aviso: aparece como alerta roja parpadeante en el dashboard hasta que se salda.",
+  ]},
+  { t:"Sincronización", b:[
+    "Guardado por fila: cada custodia, entrega y préstamo se guarda al momento en su propio registro — dos operarios pueden trabajar a la vez sin pisarse los cambios.",
+    "Refresco automático: cada 10 segundos la app comprueba si otro operario ha añadido o cambiado algo.",
+    "Aviso: si el proyecto Supabase lleva más de 1 semana sin actividad puede pausarse — entra al dashboard de Supabase para reactivarlo.",
+  ]},
+  { t:"Copia de seguridad", b:[
+    "Dónde: ⚙️ Configuración → 'Exportar datos (JSON)'.",
+    "Qué descarga: un archivo con todas las custodias, entregas y préstamos actuales.",
+    "Para qué: útil como respaldo periódico.",
+  ]},
 ];
 
 function PanelAyuda({ onClose }) {
@@ -2455,7 +2507,18 @@ function PanelAyuda({ onClose }) {
               {MANUAL_SECTIONS.map(s=>(
                 <div key={s.t} className="ayuda-section">
                   <h3>{s.t}</h3>
-                  <p>{s.c}</p>
+                  <ul>
+                    {s.b.map((item, i) => {
+                      const fin = item.indexOf(":");
+                      return (
+                        <li key={i}>
+                          {fin > 0 && fin < 40
+                            ? <><strong>{item.slice(0, fin + 1)}</strong>{item.slice(fin + 1)}</>
+                            : item}
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
               ))}
             </div>
