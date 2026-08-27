@@ -516,7 +516,6 @@ function printDeliveryDoc(custodia, entrega, allCustodias) {
   td { padding:4px 7px; border-bottom:1px solid #eee; }
   tr:nth-child(even) td { background:#f9f9f9; }
   .pendiente { font-weight:bold; color:#1a7f4b; }
-  .agotado { color:#999; }
   .firma-grid { display:grid; grid-template-columns:1fr 1fr; gap:40px; margin-top:24px; }
   .firma-box { border-top:1px solid #002D5A; padding-top:6px; text-align:center; font-size:10px; color:#666; }
   .footer { margin-top:20px; border-top:1px solid #ddd; padding-top:10px; font-size:9px; color:#999; text-align:center; }
@@ -572,17 +571,16 @@ function printDeliveryDoc(custodia, entrega, allCustodias) {
     <thead><tr><th>Referencia</th><th>Producto</th><th>Almacén</th><th style="text-align:right">Compradas</th><th style="text-align:right">Entregadas</th><th style="text-align:right">Pendientes</th></tr></thead>
     <tbody>
       ${stockCliente.map(c => {
-        const pend = c.udsTotales - c.udsEntregadas;
         const isCurrent = c.id === custodia.id;
         const entregadasMostrar = isCurrent ? c.udsEntregadas + entrega.uds : c.udsEntregadas;
         const pendMostrar = isCurrent ? Math.max(0, c.udsTotales - c.udsEntregadas - entrega.uds) : Math.max(0, c.udsTotales - c.udsEntregadas);
-        return `<tr${isCurrent ? ' style="background:#f0fff4;"' : ''}>
+        return { c, isCurrent, entregadasMostrar, pendMostrar };
+      }).filter(({ pendMostrar }) => pendMostrar > 0).map(({ c, isCurrent, entregadasMostrar, pendMostrar }) => `<tr${isCurrent ? ' style="background:#f0fff4;"' : ''}>
           <td>${c.referencia}</td><td>${c.producto}</td><td>${c.almacen}</td>
           <td style="text-align:right">${c.udsTotales}</td>
           <td style="text-align:right">${entregadasMostrar}</td>
-          <td style="text-align:right" class="${pendMostrar<=0?'agotado':'pendiente'}">${pendMostrar}</td>
-        </tr>`;
-      }).join('')}
+          <td style="text-align:right" class="pendiente">${pendMostrar}</td>
+        </tr>`).join('')}
     </tbody>
   </table>
 </div>
@@ -841,9 +839,11 @@ function printMultiDeliveryDoc(cliente, lineas, allCustodias, operario, albaranS
 
   const stockRows = stockCliente.map(c => {
     const entregaExtra = lineas.find(l => l.custodiaId === c.id)?.uds || 0;
-    const pend = c.udsTotales - c.udsEntregadas - entregaExtra;
+    const pend = Math.max(0, c.udsTotales - c.udsEntregadas - entregaExtra);
     const highlight = lineaIds.has(c.id);
-    return '<tr' + (highlight ? ' style="background:#f0fff4;"' : '') + '><td>' + c.referencia + '</td><td>' + c.producto + '</td><td>' + c.almacen + '</td><td style="text-align:right">' + c.udsTotales + '</td><td style="text-align:right">' + (c.udsEntregadas + entregaExtra) + '</td><td style="text-align:right;font-weight:bold;color:' + (pend<=0?'#999':'#1a7f4b') + '">' + Math.max(0,pend) + '</td></tr>';
+    return { c, entregaExtra, pend, highlight };
+  }).filter(({ pend }) => pend > 0).map(({ c, entregaExtra, pend, highlight }) => {
+    return '<tr' + (highlight ? ' style="background:#f0fff4;"' : '') + '><td>' + c.referencia + '</td><td>' + c.producto + '</td><td>' + c.almacen + '</td><td style="text-align:right">' + c.udsTotales + '</td><td style="text-align:right">' + (c.udsEntregadas + entregaExtra) + '</td><td style="text-align:right;font-weight:bold;color:#1a7f4b">' + pend + '</td></tr>';
   }).join('');
 
   const css = `* {box-sizing:border-box;margin:0;padding:0}
