@@ -1494,7 +1494,7 @@ function Dashboard({ data, isMobile, onNuevaCustodia, onNuevaEntrega, onEntrega,
           <div className="empty-sub">Elige un cliente, almacén o estado — o busca por texto</div>
           <div className="krafted">Diseñado por <span>Yakoba Moreno</span></div>
           <div className="krafted" style={{ marginTop: 6 }}>Desarrollado en <span style={{ color: "#002D5A" }}>Claude Code</span></div>
-          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>Gestor de Stocks y Custodias <span style={{ color: "var(--text-dim)" }}>v.8.1.4</span></div>
+          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>Gestor de Stocks y Custodias <span style={{ color: "var(--text-dim)" }}>v.8.1.5</span></div>
         </div>
       ) : filterEstado === "COMPLETAS" ? (
         entregasCliente.length === 0 ? (
@@ -2332,6 +2332,10 @@ function PanelConfig({ fontSize, onFontSize, onClose, data, onChangePassword }) 
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v8.1.5", d:"Septiembre 2026", items:[
+    "Fix importante: al saldar un préstamo temporal, la unidad ahora vuelve automáticamente al stock disponible del cliente",
+    "Antes, saldar solo marcaba la deuda como pagada sin devolver la unidad a 'Uds. entregadas', dejando el stock pendiente por debajo del real",
+  ]},
   { v:"v8.1.4", d:"Agosto 2026", items:[
     "Nuevo botón 🗑️ para eliminar una entrega desde Panel de Control → Completadas",
     "Al eliminar una entrega, sus unidades vuelven automáticamente al stock disponible de la custodia",
@@ -2472,8 +2476,9 @@ const MANUAL_SECTIONS = [
   ]},
   { t:"Préstamos temporales", b:[
     "Botón: ⚠️ naranja en cada fila de custodia activa.",
-    "Qué hace: registra que se tomaron unidades del stock de un cliente para uso urgente.",
+    "Qué hace: registra que se tomaron unidades del stock de un cliente para uso urgente (resta esas unidades de su stock disponible).",
     "Aviso: aparece como alerta roja parpadeante en el dashboard hasta que se salda.",
+    "✓ Saldar: cuando llega la reposición del proveedor, marca la deuda como pagada y devuelve automáticamente esas unidades al stock disponible del cliente.",
   ]},
   { t:"Sincronización", b:[
     "Guardado por fila: cada custodia, entrega y préstamo se guarda al momento en su propio registro — dos operarios pueden trabajar a la vez sin pisarse los cambios.",
@@ -2541,7 +2546,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v8.1.4</div>
+                <div className="about-version">v8.1.5</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
@@ -2999,8 +3004,19 @@ function MainApp({ onLogout, userEmail }) {
   }, "No se pudo registrar el préstamo. Comprueba tu conexión e inténtalo de nuevo.");
 
   const handleSaldarDeuda = (prestamoId) => persistGuard(async () => {
+    const prestamo = (data.prestamos || []).find(p => p.id === prestamoId);
     await dbUpdate('prestamos', prestamoId, { saldado: true });
-    setData(d => ({ ...d, prestamos: (d.prestamos || []).map(p => p.id === prestamoId ? { ...p, saldado: true } : p) }));
+    const custodia = prestamo ? data.custodias.find(c => c.id === prestamo.custodiaId) : null;
+    let nuevasUds = null;
+    if (custodia) {
+      nuevasUds = Math.max(0, custodia.udsEntregadas - prestamo.uds);
+      await dbUpdate('custodias', custodia.id, toRow({ udsEntregadas: nuevasUds }, CUSTODIA_FIELDS));
+    }
+    setData(d => ({
+      ...d,
+      prestamos: (d.prestamos || []).map(p => p.id === prestamoId ? { ...p, saldado: true } : p),
+      custodias: custodia ? d.custodias.map(c => c.id === custodia.id ? { ...c, udsEntregadas: nuevasUds } : c) : d.custodias,
+    }));
   }, "No se pudo saldar la deuda. Inténtalo de nuevo.");
 
   const handleEditar = (updated) => persistGuard(async () => {
