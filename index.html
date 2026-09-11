@@ -1494,7 +1494,7 @@ function Dashboard({ data, isMobile, onNuevaCustodia, onNuevaEntrega, onEntrega,
           <div className="empty-sub">Elige un cliente, almacén o estado — o busca por texto</div>
           <div className="krafted">Diseñado por <span>Yakoba Moreno</span></div>
           <div className="krafted" style={{ marginTop: 6 }}>Desarrollado en <span style={{ color: "#002D5A" }}>Claude Code</span></div>
-          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>Gestor de Stocks y Custodias <span style={{ color: "var(--text-dim)" }}>v.8.1.5</span></div>
+          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>Gestor de Stocks y Custodias <span style={{ color: "var(--text-dim)" }}>v.8.1.6</span></div>
         </div>
       ) : filterEstado === "COMPLETAS" ? (
         entregasCliente.length === 0 ? (
@@ -1590,6 +1590,13 @@ function Dashboard({ data, isMobile, onNuevaCustodia, onNuevaEntrega, onEntrega,
 }
 
 
+// ─── COLOR POR TIPO DE MOVIMIENTO ────────────────────────────────────────────
+function colorTipo(tipo) {
+  if (tipo === "CUSTODIA") return { bg: "rgba(46,125,50,0.15)", fg: "var(--green)" };
+  if (tipo === "PRESTAMO") return { bg: "rgba(255,140,0,0.15)", fg: "#ff8c00" };
+  return { bg: "rgba(226,6,19,0.12)", fg: "var(--accent)" }; // ENTREGA
+}
+
 // ─── REIMPRIMIR MOVIMIENTO ───────────────────────────────────────────────────
 function reprintMovimiento(m, data, autoprint = true) {
   if (m.tipo === "ENTREGA") {
@@ -1615,6 +1622,46 @@ function reprintMovimiento(m, data, autoprint = true) {
     } else {
       alert("No se encontró el documento original de esta entrega.");
     }
+  } else if (m.tipo === "PRESTAMO") {
+    const pid = m.id.replace(/^p-/, "");
+    const prestamo = (data.prestamos || []).find(p => p.id === pid);
+    if (!prestamo) { alert("No se encontró el préstamo."); return; }
+    const custodia = data.custodias.find(c => c.id === prestamo.custodiaId);
+    const date = fmtNow();
+    const estadoColor = prestamo.saldado ? "#1a7f4b" : "#ff8c00";
+    const estadoTexto = prestamo.saldado ? "SALDADO" : "ACTIVO — PENDIENTE DE REPONER";
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>Préstamo — ${custodia?.cliente || "Custodia eliminada"}</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:Arial,sans-serif; font-size:11px; color:#002D5A; padding:20px; }
+  .header { display:flex; justify-content:space-between; border-bottom:3px solid #ff8c00; padding-bottom:10px; margin-bottom:16px; }
+  .company { font-size:18px; font-weight:bold; }
+  .doc-title h2 { font-size:14px; color:#ff8c00; text-align:right; }
+  .row { display:flex; gap:8px; padding:6px 0; border-bottom:1px solid #eee; font-size:11px; }
+  .label { font-weight:bold; min-width:150px; }
+  .footer { margin-top:20px; font-size:9px; color:#999; text-align:center; border-top:1px solid #ddd; padding-top:8px; }
+  @media print { body { padding:8px; } }
+</style></head><body>
+<div class="header">
+  <div><div class="company">RECAMBIOS IBIZA S.A.</div><div style="font-size:10px;color:#666">AD Parts Distribución</div></div>
+  <div class="doc-title"><h2>FICHA DE PRÉSTAMO TEMPORAL</h2><div style="font-size:10px;color:#666;text-align:right">Impreso: ${date}</div></div>
+</div>
+<div class="row"><span class="label">Cliente (custodia origen):</span><span>${custodia?.cliente || "—"}</span></div>
+<div class="row"><span class="label">Referencia:</span><span>${custodia?.referencia || "—"}</span></div>
+<div class="row"><span class="label">Producto:</span><span>${custodia?.producto || "—"}</span></div>
+<div class="row"><span class="label">Almacén:</span><span>${custodia?.almacen || "—"}</span></div>
+<div class="row"><span class="label">Unidades prestadas:</span><span style="font-weight:bold">${prestamo.uds}</span></div>
+<div class="row"><span class="label">Destinado a:</span><span>${prestamo.clienteDeutor || "—"}</span></div>
+<div class="row"><span class="label">Motivo:</span><span>${prestamo.motivo || "—"}</span></div>
+<div class="row"><span class="label">Fecha:</span><span>${fmt(prestamo.fecha)}</span></div>
+<div class="row"><span class="label">Estado:</span><span style="font-weight:bold;color:${estadoColor}">${estadoTexto}</span></div>
+<div class="footer">Recambios Ibiza S.A. · AD Parts Distribución · Generado el ${date}</div>
+</body></html>`;
+    const win = window.open("", "_blank", "width=700,height=600");
+    win.document.write(html);
+    win.document.close();
+    if (autoprint) setTimeout(() => win.print(), 400);
   } else {
     const cid = m.id.replace("c-", "");
     const custodia = data.custodias.find(c => c.id === cid);
@@ -1660,8 +1707,10 @@ ${custodia.notas ? `<div class="row"><span class="label">Notas:</span><span>${cu
 // ─── HISTORIAL DE MOVIMIENTOS ────────────────────────────────────────────────
 function Historial({ data }) {
   const [search, setSearch] = useState("");
+  const [filterTipo, setFilterTipo] = useState("TODOS");
 
-  // Combinar custodias (ENTRADA) y entregas agrupadas (SALIDA) en un solo timeline
+  // Combinar custodias (ENTRADA), entregas agrupadas (SALIDA) y préstamos
+  // temporales en un solo timeline
   const gruposEntrega = agruparEntregas(data.entregas, data.custodias);
   const movimientos = [
     ...data.custodias.map(c => ({
@@ -1690,24 +1739,50 @@ function Historial({ data }) {
       grupoEntregaKey: g.esMultiple ? g.key : null,
       lineas: g.lineas,
       primerNumEntrega: g.primerNumEntrega || "",
-    }))
+    })),
+    ...(data.prestamos || []).map(p => {
+      const custodia = data.custodias.find(c => c.id === p.custodiaId);
+      return {
+        id: "p-" + p.id,
+        tipo: "PRESTAMO",
+        fecha: p.fecha || "",
+        cliente: custodia?.cliente || "Cliente eliminado",
+        referencia: custodia?.referencia || "",
+        producto: (custodia?.producto || "") + (p.clienteDeutor ? `  ·  Para: ${p.clienteDeutor}` : ""),
+        almacen: custodia?.almacen || "",
+        uds: p.uds,
+        operario: "",
+        albaran: p.saldado ? "SALDADO" : "ACTIVO",
+        notas: p.motivo || "",
+        esMultiple: false, grupoEntregaKey: null,
+        saldado: p.saldado,
+      };
+    })
   ]
+  .filter(m => filterTipo === "TODOS" || m.tipo === filterTipo)
   .filter(m => {
     if (!search) return true;
     const q = search.toLowerCase();
-    return `${m.cliente} ${m.referencia} ${m.producto} ${m.albaran} ${m.operario}`.toLowerCase().includes(q);
+    return `${m.cliente} ${m.referencia} ${m.producto} ${m.albaran} ${m.operario} ${m.notas}`.toLowerCase().includes(q);
   })
   .sort((a, b) => {
     const da = a.fecha && a.fecha.match(/^\d{4}/) ? a.fecha : "1900";
     const db = b.fecha && b.fecha.match(/^\d{4}/) ? b.fecha : "1900";
     const fc = db.localeCompare(da);
     if (fc !== 0) return fc;
-    // Mismo día: ENTREGA por numEntrega desc, CUSTODIA por id desc
+    // Mismo día: ENTREGA por numEntrega desc, resto por id desc
     const na = parseInt((a.primerNumEntrega||"").replace(/\D/g,"") || "0");
     const nb = parseInt((b.primerNumEntrega||"").replace(/\D/g,"") || "0");
     if (na > 0 || nb > 0) return nb - na;
     return (b.id||"").localeCompare(a.id||"");
   });
+
+  const FILTROS = [
+    ["TODOS", "Todos"],
+    ["CUSTODIA", "Custodias"],
+    ["ENTREGA", "Entregas"],
+    ["PRESTAMO", "Préstamos"],
+  ];
 
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"100%" }}>
@@ -1716,8 +1791,17 @@ function Historial({ data }) {
         <div className="section-header">
           <div>
             <div className="section-title">Histórico de movimientos</div>
-            <div className="section-sub">{movimientos.length} movimientos · {data.custodias.length} custodias · {data.entregas.length} entregas</div>
+            <div className="section-sub">{movimientos.length} movimientos · {data.custodias.length} custodias · {data.entregas.length} entregas · {(data.prestamos||[]).length} préstamos</div>
           </div>
+        </div>
+        <div style={{ display:"flex", gap:6, marginBottom:12, flexWrap:"wrap" }}>
+          {FILTROS.map(([key, label]) => (
+            <button key={key}
+              className={"btn btn-sm " + (filterTipo === key ? "btn-primary" : "btn-ghost")}
+              onClick={() => setFilterTipo(key)}>
+              {label}
+            </button>
+          ))}
         </div>
         <div className="search-bar" style={{ paddingBottom:12, marginBottom:0 }}>
           <input className="search-input" placeholder="🔍  Buscar por cliente, referencia, operario, albarán..." value={search} onChange={e => setSearch(e.target.value.toUpperCase())} />
@@ -1738,8 +1822,8 @@ function Historial({ data }) {
             <div style={{
               display: "inline-block", padding: "2px 7px", borderRadius: 4,
               fontFamily: "var(--mono,monospace)", fontSize: 9, fontWeight: 700,
-              background: m.tipo === "CUSTODIA" ? "rgba(46,125,50,0.15)" : "rgba(226,6,19,0.12)",
-              color: m.tipo === "CUSTODIA" ? "var(--green)" : "var(--accent)",
+              background: colorTipo(m.tipo).bg,
+              color: colorTipo(m.tipo).fg,
               marginBottom: 3
             }}>{m.tipo}</div>
             <div className="history-date">{fmt(m.fecha)}</div>
@@ -1748,9 +1832,9 @@ function Historial({ data }) {
           <div style={{ fontFamily: "var(--mono,monospace)", fontSize: 10, color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {m.operario && m.operario !== "Importado" ? m.operario : <span style={{ fontStyle: "italic", color: "var(--text-faint)" }}>—</span>}
           </div>
-          {/* Col 3: albarán */}
+          {/* Col 3: albarán / estado */}
           <div style={{ fontFamily: "var(--mono,monospace)", fontSize: 10, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            color: m.albaran ? (m.tipo === "CUSTODIA" ? "var(--green)" : "var(--accent)") : "var(--text-faint)" }}>
+            color: m.tipo === "PRESTAMO" ? (m.saldado ? "var(--green)" : "#ff8c00") : (m.albaran ? colorTipo(m.tipo).fg : "var(--text-faint)") }}>
             {m.albaran || "—"}
           </div>
           {/* Col 4: cliente + producto */}
@@ -1768,7 +1852,7 @@ function Historial({ data }) {
           </div>
           {/* Col 5: unidades */}
           <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-            <span style={{ fontFamily:"var(--mono,monospace)", fontSize:15, fontWeight:700, color: m.tipo === "CUSTODIA" ? "var(--green)" : "var(--accent)" }}>{m.uds}</span>
+            <span style={{ fontFamily:"var(--mono,monospace)", fontSize:15, fontWeight:700, color: colorTipo(m.tipo).fg }}>{m.uds}</span>
             <span style={{ fontFamily:"var(--mono,monospace)", fontSize:11, color:"var(--text-dim)", marginLeft:4 }}>Uds.</span>
           </div>
           {/* Col 6: acciones */}
@@ -2332,6 +2416,11 @@ function PanelConfig({ fontSize, onFontSize, onClose, data, onChangePassword }) 
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v8.1.6", d:"Septiembre 2026", items:[
+    "Histórico: los préstamos temporales aparecen ahora como tercer tipo de movimiento (naranja), junto a custodias (verde) y entregas (rojo)",
+    "Nuevos botones de filtro en Histórico: Todos / Custodias / Entregas / Préstamos (selección única)",
+    "Los préstamos ya se pueden previsualizar 👁 e imprimir 🖨️ como una ficha propia, igual que custodias y entregas",
+  ]},
   { v:"v8.1.5", d:"Septiembre 2026", items:[
     "Fix importante: al saldar un préstamo temporal, la unidad ahora vuelve automáticamente al stock disponible del cliente",
     "Antes, saldar solo marcaba la deuda como pagada sin devolver la unidad a 'Uds. entregadas', dejando el stock pendiente por debajo del real",
@@ -2470,9 +2559,10 @@ const MANUAL_SECTIONS = [
     "Alerta ⚠️ si hay préstamos activos de esa referencia.",
   ]},
   { t:"Histórico", b:[
-    "Timeline de todos los movimientos: custodias en verde, entregas en rojo.",
+    "Timeline de todos los movimientos: custodias en verde, entregas en rojo, préstamos temporales en naranja.",
+    "Filtros: botones 'Todos / Custodias / Entregas / Préstamos' arriba, de selección única.",
     "Orden: del más reciente al más antiguo.",
-    "👁 Previsualizar / 🖨️ Reimprimir el documento original de cada fila.",
+    "👁 Previsualizar / 🖨️ Reimprimir el documento original de cada fila, incluidos los préstamos.",
   ]},
   { t:"Préstamos temporales", b:[
     "Botón: ⚠️ naranja en cada fila de custodia activa.",
@@ -2546,7 +2636,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v8.1.5</div>
+                <div className="about-version">v8.1.6</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
