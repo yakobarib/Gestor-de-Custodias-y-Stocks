@@ -56,6 +56,24 @@
   .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
   .badge { background: var(--accent); color: #fff; border-radius: 10px; padding: 1px 6px; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; }
   .badge-warn { background: #E20613; }
+  /* ── Panel lateral (sidebar) ── */
+  .app-shell { display: flex; flex-direction: row; height: 100vh; overflow: hidden; }
+  .sidebar { display: none; width: 220px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); flex-direction: column; padding: 20px 16px; }
+  .sidebar-logo { display: flex; align-items: center; gap: 12px; padding: 0 4px 20px; }
+  .sidebar-nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .sidebar-nav-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: none; border-radius: 8px; background: none; cursor: pointer; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 13px; color: var(--text-dim); transition: all 0.15s; text-align: left; }
+  .sidebar-nav-btn:hover { color: var(--text); background: var(--surface2); }
+  .sidebar-nav-btn.active { color: var(--accent); background: var(--accent-dim); }
+  .sidebar-nav-icon { font-size: 15px; width: 18px; text-align: center; flex-shrink: 0; }
+  .sidebar-footer { padding: 16px 4px 4px; border-top: 1px solid var(--border); margin-top: 12px; }
+  .app-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+  .topbar-title { display: none; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; color: var(--text); }
+  @media (min-width: 769px) {
+    .sidebar { display: flex; }
+    .header .logo { display: none; }
+    .topbar-title { display: block; }
+    .nav { display: none; }
+  }
   .main { flex: 1; padding: 28px; max-width: 1400px; width: 100%; margin: 0 auto; }
   .kpis { display: grid; grid-template-columns: repeat(5,1fr); gap: 14px; margin-bottom: 24px; }
   .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; transition: box-shadow 0.2s; }
@@ -1494,7 +1512,7 @@ function Dashboard({ data, isMobile, onNuevaCustodia, onNuevaEntrega, onEntrega,
           <div className="empty-sub">Elige un cliente, almacén o estado — o busca por texto</div>
           <div className="krafted">Diseñado por <span>Yakoba Moreno</span></div>
           <div className="krafted" style={{ marginTop: 6 }}>Desarrollado en <span style={{ color: "#002D5A" }}>Claude Code</span></div>
-          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>Gestor de Stocks y Custodias <span style={{ color: "var(--text-dim)" }}>v.8.1.6</span></div>
+          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>Gestor de Stocks y Custodias <span style={{ color: "var(--text-dim)" }}>v.8.2.0</span></div>
         </div>
       ) : filterEstado === "COMPLETAS" ? (
         entregasCliente.length === 0 ? (
@@ -2416,6 +2434,12 @@ function PanelConfig({ fontSize, onFontSize, onClose, data, onChangePassword }) 
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v8.2.0", d:"Septiembre 2026", items:[
+    "Nuevo panel lateral de navegación en escritorio (logo, pestañas y firma abajo), en vez de la barra horizontal de arriba",
+    "La cabecera de escritorio pasa a mostrar el título de la pestaña activa junto a los iconos de Ayuda, Configuración, tema y cerrar sesión",
+    "En móvil no cambia nada: se mantiene la cabecera y el menú horizontal de siempre",
+    "Sin cambios de colores, tipografía ni tamaños — mismo diseño, solo reorganizado",
+  ]},
   { v:"v8.1.6", d:"Septiembre 2026", items:[
     "Histórico: los préstamos temporales aparecen ahora como tercer tipo de movimiento (naranja), junto a custodias (verde) y entregas (rojo)",
     "Nuevos botones de filtro en Histórico: Todos / Custodias / Entregas / Préstamos (selección única)",
@@ -2636,7 +2660,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v8.1.6</div>
+                <div className="about-version">v8.2.0</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
@@ -3177,8 +3201,39 @@ function MainApp({ onLogout, userEmail }) {
     </div>
   );
 
+  const NAV_ITEMS = [
+    { id: "dashboard",  label: "Panel de Control", icon: "📊" },
+    { id: "custodias",  label: "Custodias", icon: "📦" },
+    { id: "entregas",   label: "Entregas", icon: "🚚" },
+    { id: "productos",  label: "Productos", icon: "🧰" },
+    { id: "historial",  label: "Histórico", icon: "🕐" },
+  ];
+  const tituloActual = NAV_ITEMS.find(t => t.id === tab)?.label || "";
+
   return (
-    <div className="app">
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="sidebar-logo">
+          <LogoAD size={40} darkMode={darkMode} />
+          <div>
+            <div className="logo-text">Recambios Ibiza</div>
+            <div className="logo-sub">GESTOR DE STOCK EN CUSTODIA</div>
+          </div>
+        </div>
+        <nav className="sidebar-nav">
+          {NAV_ITEMS.map(t => (
+            <button key={t.id} className={`sidebar-nav-btn ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>
+              <span className="sidebar-nav-icon">{t.icon}</span>{t.label}
+            </button>
+          ))}
+        </nav>
+        <div className="sidebar-footer">
+          <div className="krafted">Diseñado por <span>Yakoba Moreno</span></div>
+          <div className="krafted" style={{ marginTop: 6 }}>Desarrollado en <span style={{ color: "#002D5A" }}>Claude Code</span></div>
+        </div>
+      </aside>
+
+      <div className="app-main">
       <header className="header">
         <div className="logo">
           <LogoAD size={40} darkMode={darkMode} />
@@ -3187,6 +3242,7 @@ function MainApp({ onLogout, userEmail }) {
             <div className="logo-sub">GESTOR DE STOCK EN CUSTODIA</div>
           </div>
         </div>
+        <div className="topbar-title">{tituloActual}</div>
         <div className="header-right">
           <div className={`header-save ${saveStatus === "saved" ? "saved" : ""}`}>
             {saveStatus === "saving" ? "⟳ Guardando..." : "✓ Sincronizado"}
@@ -3200,13 +3256,7 @@ function MainApp({ onLogout, userEmail }) {
       </header>
 
       <nav className="nav">
-        {[
-          { id: "dashboard",  label: "Panel de Control" },
-          { id: "custodias",  label: "Custodias" },
-          { id: "entregas",   label: "Entregas" },
-          { id: "productos",  label: "Productos" },
-          { id: "historial",  label: "Histórico" },
-        ].map(t => (
+        {NAV_ITEMS.map(t => (
           <button key={t.id} className={`nav-btn ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>
             {t.label}
           </button>
@@ -3236,6 +3286,7 @@ function MainApp({ onLogout, userEmail }) {
         {tab === "historial" && <div style={{ flex:1, overflow:"hidden", display:"flex", flexDirection:"column" }}><Historial data={data} /></div>}
         </div>{/* end main-inner */}
       </main>
+      </div>{/* end app-main */}
 
       {showConfig && (
         <PanelConfig
