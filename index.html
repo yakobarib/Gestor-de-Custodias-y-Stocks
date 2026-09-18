@@ -38,8 +38,7 @@
   @keyframes blink-red { 0%,100% { color: #E20613; } 50% { color: rgba(226,6,19,0.25); } }
   .kpi-value.debt-pulse { animation: blink-red 1.2s ease-in-out infinite; font-weight: 900; }
   .krafted { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-faint); margin-top: 20px; }
-  .krafted span { color: #a8e63d; font-weight: 700; }
-  [data-theme="light"] .krafted span { color: #002D5A; }
+  .krafted span { color: var(--text); font-weight: 700; }
   /* ── Layout sticky ── */
   html, body { height: 100%; }
   .app { height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
@@ -2450,6 +2449,10 @@ function PanelConfig({ fontSize, onFontSize, onClose, data, onChangePassword }) 
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v8.2.6", d:"Septiembre 2026", items:[
+    "Logo del panel lateral un poco más pequeño",
+    "'Yakoba Moreno' y 'Claude Code', en el pie del panel, pasan a verse en blanco (modo oscuro) en vez de verde/azul marino",
+  ]},
   { v:"v8.2.5", d:"Septiembre 2026", items:[
     "Fix: el icono 'ad' tenía mucho margen invisible y desigual dentro de su propio recuadro (sobre todo a la izquierda), lo que descuadraba el logo junto al texto de dos líneas — recortado a su contenido real",
     "El número de versión, al pie del panel, pasa a mostrarse dentro de una píldora con borde, en vez de como texto suelto",
@@ -2698,7 +2701,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v8.2.5</div>
+                <div className="about-version">v8.2.6</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
@@ -3252,7 +3255,7 @@ function MainApp({ onLogout, userEmail }) {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="sidebar-logo">
-          <LogoAD size={40} darkMode={darkMode} />
+          <LogoAD size={32} darkMode={darkMode} />
           <div>
             <div className="logo-text">Recambios Ibiza</div>
             <div className="logo-sub">GESTOR DE STOCKS</div>
@@ -3267,8 +3270,8 @@ function MainApp({ onLogout, userEmail }) {
         </nav>
         <div className="sidebar-footer">
           <div className="krafted">Diseñado por <span>Yakoba Moreno</span></div>
-          <div className="krafted" style={{ marginTop: 6 }}>Desarrollado en <span style={{ color: "#002D5A" }}>Claude Code</span></div>
-          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.2.5</span></div>
+          <div className="krafted" style={{ marginTop: 6 }}>Desarrollado en <span>Claude Code</span></div>
+          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.2.6</span></div>
         </div>
       </aside>
 
