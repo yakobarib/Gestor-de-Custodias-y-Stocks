@@ -28,7 +28,7 @@
   .app { display: flex; flex-direction: column; min-height: 100vh; }
   .header { display: flex; align-items: center; justify-content: space-between; padding: 0 28px; height: 60px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
   .logo { display: flex; align-items: center; gap: 12px; }
-  .logo-text { font-family: 'Inter', sans-serif; font-weight: 800; font-size: 16px; letter-spacing: -0.5px; color: var(--text); }
+  .logo-text { font-family: 'Inter', sans-serif; font-weight: 800; font-size: 16px; letter-spacing: -0.5px; color: var(--text); white-space: nowrap; }
   .logo-sub { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); margin-top: -2px; }
   .header-right { display: flex; align-items: center; gap: 12px; }
   .header-save { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 5px 12px; }
@@ -1510,9 +1510,6 @@ function Dashboard({ data, isMobile, onNuevaCustodia, onNuevaEntrega, onEntrega,
           <div className="empty-icon">🔍</div>
           <div className="empty-title">Selecciona un filtro para consultar</div>
           <div className="empty-sub">Elige un cliente, almacén o estado — o busca por texto</div>
-          <div className="krafted">Diseñado por <span>Yakoba Moreno</span></div>
-          <div className="krafted" style={{ marginTop: 6 }}>Desarrollado en <span style={{ color: "#002D5A" }}>Claude Code</span></div>
-          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>Gestor de Stocks y Custodias <span style={{ color: "var(--text-dim)" }}>v.8.2.2</span></div>
         </div>
       ) : filterEstado === "COMPLETAS" ? (
         entregasCliente.length === 0 ? (
@@ -2450,6 +2447,10 @@ function PanelConfig({ fontSize, onFontSize, onClose, data, onChangePassword }) 
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v8.2.3", d:"Septiembre 2026", items:[
+    "Fix: 'Recambios Ibiza' seguía partiéndose en dos líneas en el panel lateral pese a haberlo ensanchado — faltaba 'white-space: nowrap' en el nombre, no era un problema de espacio",
+    "Quitada la firma 'Diseñado por / Desarrollado en / versión' del panel central (Panel de Control), ya que ahora vive de forma permanente en el pie del panel lateral",
+  ]},
   { v:"v8.2.2", d:"Septiembre 2026", items:[
     "Panel lateral un poco más ancho para que 'Recambios Ibiza' quepa en una línea; subtítulo acortado a 'GESTOR DE STOCKS'",
     "Número de versión visible debajo de la firma, al pie del panel",
@@ -2685,7 +2686,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v8.2.2</div>
+                <div className="about-version">v8.2.3</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
@@ -3255,7 +3256,7 @@ function MainApp({ onLogout, userEmail }) {
         <div className="sidebar-footer">
           <div className="krafted">Diseñado por <span>Yakoba Moreno</span></div>
           <div className="krafted" style={{ marginTop: 6 }}>Desarrollado en <span style={{ color: "#002D5A" }}>Claude Code</span></div>
-          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>v.8.2.2</div>
+          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>v.8.2.3</div>
         </div>
       </aside>
 
