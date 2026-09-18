@@ -1512,7 +1512,7 @@ function Dashboard({ data, isMobile, onNuevaCustodia, onNuevaEntrega, onEntrega,
           <div className="empty-sub">Elige un cliente, almacén o estado — o busca por texto</div>
           <div className="krafted">Diseñado por <span>Yakoba Moreno</span></div>
           <div className="krafted" style={{ marginTop: 6 }}>Desarrollado en <span style={{ color: "#002D5A" }}>Claude Code</span></div>
-          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>Gestor de Stocks y Custodias <span style={{ color: "var(--text-dim)" }}>v.8.2.0</span></div>
+          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>Gestor de Stocks y Custodias <span style={{ color: "var(--text-dim)" }}>v.8.2.1</span></div>
         </div>
       ) : filterEstado === "COMPLETAS" ? (
         entregasCliente.length === 0 ? (
@@ -2151,18 +2151,34 @@ function TabCustodias({ data }) {
 // ─── PRINT ENTREGAS DOC ───────────────────────────────────────────────────────
 function printEntregasDoc(titulo, filas) {
   const date = fmtNow();
-  const rows = filas.map(e => `<tr>
-    <td style="font-weight:bold">${e.numEntrega || "—"}</td>
-    <td>${fmt(e.fecha)}</td>
-    <td>${e.cliente || "—"}</td>
-    <td>${e.referencia || "—"}</td>
-    <td>${e.producto || "—"}</td>
-    <td>${e.almacen || "—"}</td>
-    <td style="text-align:right;font-weight:bold;color:#E20613">${e.uds}</td>
-    <td>${e.operario || "—"}</td>
-    <td>${e.albaran || "—"}</td>
-  </tr>`).join('');
-  const total = filas.reduce((s, e) => s + e.uds, 0);
+  const rows = filas.map(f => {
+    const esGrupo = Array.isArray(f.lineas);
+    const numEntrega = esGrupo
+      ? (f.primerNumEntrega ? "#" + f.primerNumEntrega + (f.esMultiple ? "…" : "") : "—")
+      : (f.numEntrega || "—");
+    const referencia = esGrupo
+      ? (f.esMultiple ? "MÚLTIPLE" : (f.lineas[0]?.referencia || "—"))
+      : (f.referencia || "—");
+    const producto = esGrupo
+      ? (f.esMultiple ? f.lineas.map(l => l.referencia + " ×" + l.uds).join(" · ") : (f.lineas[0]?.producto || "—"))
+      : (f.producto || "—");
+    const almacen = esGrupo
+      ? (f.esMultiple ? "" : (f.lineas[0]?.almacen || "—"))
+      : (f.almacen || "—");
+    const uds = esGrupo ? f.totalUds : f.uds;
+    return `<tr>
+    <td style="font-weight:bold">${numEntrega}</td>
+    <td>${fmt(f.fecha)}</td>
+    <td>${f.cliente || "—"}</td>
+    <td>${referencia}</td>
+    <td>${producto}</td>
+    <td>${almacen || "—"}</td>
+    <td style="text-align:right;font-weight:bold;color:#E20613">${uds}</td>
+    <td>${f.operario || "—"}</td>
+    <td>${f.albaran || "—"}</td>
+  </tr>`;
+  }).join('');
+  const total = filas.reduce((s, f) => s + (Array.isArray(f.lineas) ? f.totalUds : f.uds), 0);
   const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
 <title>${titulo}</title>
 <style>
@@ -2434,6 +2450,10 @@ function PanelConfig({ fontSize, onFontSize, onClose, data, onChangePassword }) 
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v8.2.1", d:"Septiembre 2026", items:[
+    "Fix: al imprimir 'Entregas' filtrando por cliente salían referencia/producto en blanco, unidades 'undefined' y total 'NaN'",
+    "El filtro por referencia ya imprimía bien; el fallo era solo en la vista agrupada por cliente",
+  ]},
   { v:"v8.2.0", d:"Septiembre 2026", items:[
     "Nuevo panel lateral de navegación en escritorio (logo, pestañas y firma abajo), en vez de la barra horizontal de arriba",
     "La cabecera de escritorio pasa a mostrar el título de la pestaña activa junto a los iconos de Ayuda, Configuración, tema y cerrar sesión",
@@ -2660,7 +2680,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v8.2.0</div>
+                <div className="about-version">v8.2.1</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
