@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gestor de Stock en Custodia · Recambios Ibiza</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@700;800;900&family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@700;800;900&family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
   <style>
 
   :root {
@@ -57,8 +57,8 @@
   .badge { background: var(--accent); color: #fff; border-radius: 10px; padding: 1px 6px; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; }
   .badge-warn { background: #E20613; }
   /* ── Panel lateral (sidebar) ── */
-  .app-shell { display: flex; flex-direction: row; height: 100vh; overflow: hidden; }
-  .sidebar { display: none; width: 240px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); flex-direction: column; padding: 20px 16px; }
+  .app-shell { display: flex; flex-direction: row; height: 100vh; overflow: hidden; background: var(--bg); }
+  .sidebar { display: none; width: 240px; flex-shrink: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; flex-direction: column; padding: 20px 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.18); }
   .sidebar-logo { display: flex; align-items: center; gap: 12px; padding: 0 4px 20px; }
   .sidebar-nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
   .sidebar-nav-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: none; border-radius: 8px; background: none; cursor: pointer; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 13px; color: var(--text-dim); transition: all 0.15s; text-align: left; }
@@ -67,12 +67,14 @@
   .sidebar-nav-icon { font-size: 15px; width: 18px; text-align: center; flex-shrink: 0; }
   .sidebar-footer { padding: 16px 4px 4px; border-top: 1px solid var(--border); margin-top: 12px; }
   .app-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
-  .topbar-title { display: none; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; color: var(--text); }
+  .topbar-title { display: none; font-family: 'Poppins', sans-serif; font-weight: 800; font-size: 20px; color: var(--text); }
   @media (min-width: 769px) {
+    .app-shell { padding: 12px; gap: 12px; box-sizing: border-box; }
     .sidebar { display: flex; }
     .header .logo { display: none; }
     .topbar-title { display: block; }
     .nav { display: none; }
+    .header { background: var(--bg); border-bottom: none; box-shadow: none; }
   }
   .main { flex: 1; padding: 28px; max-width: 1400px; width: 100%; margin: 0 auto; }
   .kpis { display: grid; grid-template-columns: repeat(5,1fr); gap: 14px; margin-bottom: 24px; }
@@ -2447,6 +2449,11 @@ function PanelConfig({ fontSize, onFontSize, onClose, data, onChangePassword }) 
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v8.2.4", d:"Septiembre 2026", items:[
+    "Panel lateral 'flotante': ahora tiene un pequeño margen alrededor y esquinas redondeadas, en vez de ir pegado a los bordes de la pantalla",
+    "La cabecera de escritorio se funde con el fondo de la página (sin barra ni borde visible), en línea con el resto de apps del mismo estilo",
+    "El título de la pestaña activa, en la cabecera, pasa a usar la tipografía Poppins",
+  ]},
   { v:"v8.2.3", d:"Septiembre 2026", items:[
     "Fix: 'Recambios Ibiza' seguía partiéndose en dos líneas en el panel lateral pese a haberlo ensanchado — faltaba 'white-space: nowrap' en el nombre, no era un problema de espacio",
     "Quitada la firma 'Diseñado por / Desarrollado en / versión' del panel central (Panel de Control), ya que ahora vive de forma permanente en el pie del panel lateral",
@@ -2686,7 +2693,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v8.2.3</div>
+                <div className="about-version">v8.2.4</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
@@ -3256,7 +3263,7 @@ function MainApp({ onLogout, userEmail }) {
         <div className="sidebar-footer">
           <div className="krafted">Diseñado por <span>Yakoba Moreno</span></div>
           <div className="krafted" style={{ marginTop: 6 }}>Desarrollado en <span style={{ color: "#002D5A" }}>Claude Code</span></div>
-          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>v.8.2.3</div>
+          <div className="krafted" style={{ marginTop: 6, color: "var(--text-faint)" }}>v.8.2.4</div>
         </div>
       </aside>
 
