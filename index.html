@@ -1999,6 +1999,7 @@ function printCustodiasDoc(titulo, filas, allCustodias) {
 function TabCustodias({ data }) {
   const [filterCliente, setFilterCliente] = useState("");
   const [filterRef,     setFilterRef]     = useState("");
+  const [filterAlmacen, setFilterAlmacen] = useState("");
 
   const clientes = [...new Set(
     data.custodias.filter(c => c.udsTotales - c.udsEntregadas > 0).map(c => c.cliente)
@@ -2006,6 +2007,11 @@ function TabCustodias({ data }) {
 
   const referencias = [...new Set(
     data.custodias.filter(c => c.udsTotales - c.udsEntregadas > 0).map(c => c.referencia)
+  )].sort();
+
+  // Lista de ubicaciones sacada de los datos reales: si aparece una nueva, sale sola
+  const almacenes = [...new Set(
+    data.custodias.filter(c => c.udsTotales - c.udsEntregadas > 0).map(c => c.almacen).filter(Boolean)
   )].sort();
 
   const activas = data.custodias.filter(c => c.udsTotales - c.udsEntregadas > 0);
@@ -2018,38 +2024,49 @@ function TabCustodias({ data }) {
     ? activas.filter(c => c.referencia === filterRef)
     : [];
 
-  const totalPorRef = porRef.reduce((s,c) => s + (c.udsTotales - c.udsEntregadas), 0);
+  const porAlmacen = filterAlmacen
+    ? activas.filter(c => c.almacen === filterAlmacen)
+        .sort((a, b) => a.cliente.localeCompare(b.cliente) || a.referencia.localeCompare(b.referencia))
+    : [];
 
-  const nada = !filterCliente && !filterRef;
+  const totalPorRef = porRef.reduce((s,c) => s + (c.udsTotales - c.udsEntregadas), 0);
+  const totalPorAlmacen = porAlmacen.reduce((s,c) => s + (c.udsTotales - c.udsEntregadas), 0);
+
+  const nada = !filterCliente && !filterRef && !filterAlmacen;
 
   return (
     <div>
       <div className="section-header">
         <div>
           <div className="section-title">Custodias activas</div>
-          <div className="section-sub">Consulta por cliente o por referencia de producto</div>
+          <div className="section-sub">Consulta por cliente, referencia o ubicación</div>
         </div>
       </div>
 
       {/* Filtros */}
       <div className="search-bar" style={{ marginBottom: 20 }}>
         <select className="filter-select" style={{ flex: 1 }} value={filterCliente}
-          onChange={e => { setFilterCliente(e.target.value); setFilterRef(""); }}>
+          onChange={e => { setFilterCliente(e.target.value); setFilterRef(""); setFilterAlmacen(""); }}>
           <option value="">— Filtrar por Cliente —</option>
           {clientes.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
         <select className="filter-select" style={{ flex: 1 }} value={filterRef}
-          onChange={e => { setFilterRef(e.target.value); setFilterCliente(""); }}>
+          onChange={e => { setFilterRef(e.target.value); setFilterCliente(""); setFilterAlmacen(""); }}>
           <option value="">— Filtrar por Referencia —</option>
           {referencias.map(r => <option key={r} value={r}>{r}</option>)}
+        </select>
+        <select className="filter-select" style={{ flex: 1 }} value={filterAlmacen}
+          onChange={e => { setFilterAlmacen(e.target.value); setFilterCliente(""); setFilterRef(""); }}>
+          <option value="">— Filtrar por Ubicación —</option>
+          {almacenes.map(a => <option key={a} value={a}>{a}</option>)}
         </select>
       </div>
 
       {nada && (
         <div className="empty">
           <div className="empty-icon">📋</div>
-          <div className="empty-title">Selecciona un cliente o una referencia</div>
-          <div className="empty-sub">Puedes ver el stock activo por cliente o por referencia de producto</div>
+          <div className="empty-title">Selecciona un cliente, referencia o ubicación</div>
+          <div className="empty-sub">Puedes ver el stock activo por cliente, por referencia de producto o por ubicación en almacén</div>
         </div>
       )}
 
@@ -2135,6 +2152,55 @@ function TabCustodias({ data }) {
                 <tr style={{borderTop:"2px solid var(--border)"}}>
                   <td colSpan="4" style={{fontWeight:700,textAlign:"right",fontFamily:"var(--mono,monospace)",fontSize:11}}>TOTAL PENDIENTES</td>
                   <td style={{textAlign:"right",fontWeight:700,color:"var(--green)",fontFamily:"var(--mono,monospace)"}}>{totalPorRef}</td>
+                  <td></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Vista por UBICACIÓN */}
+      {filterAlmacen && (
+        <div>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+            <div>
+              <div className="section-title" style={{ fontSize:14 }}>Ubicación: {filterAlmacen}</div>
+              <div className="section-sub">
+                {porAlmacen.length} líneas activas · {[...new Set(porAlmacen.map(c=>c.cliente))].length} clientes · <strong style={{color:"var(--green)"}}>{totalPorAlmacen} uds. pendientes en total</strong>
+              </div>
+            </div>
+            <div style={{ display:"flex", gap:8 }}>
+              <button className="btn btn-primary" onClick={() => printCustodiasDoc(`Stock en custodia — ${filterAlmacen}`, porAlmacen)}>🖨️ Imprimir</button>
+            </div>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Cliente</th><th>Referencia</th><th>Producto</th>
+                <th style={{textAlign:"right"}}>Compradas</th>
+                <th style={{textAlign:"right"}}>Entregadas</th>
+                <th style={{textAlign:"right"}}>Pendientes</th>
+                <th>Fecha</th>
+              </tr></thead>
+              <tbody>
+                {porAlmacen.map(c => {
+                  const pend = c.udsTotales - c.udsEntregadas;
+                  return (
+                    <tr key={c.id}>
+                      <td style={{fontWeight:700}}>{c.cliente}</td>
+                      <td style={{fontFamily:"var(--mono,monospace)",fontWeight:700,color:"var(--text)"}}>{c.referencia}</td>
+                      <td>{c.producto}</td>
+                      <td style={{textAlign:"right"}}>{c.udsTotales}</td>
+                      <td style={{textAlign:"right"}}>{c.udsEntregadas}</td>
+                      <td style={{textAlign:"right",fontWeight:700,color:"var(--green)"}}>{pend}</td>
+                      <td style={{color:"var(--text-dim)"}}>{fmt(c.fecha)}</td>
+                    </tr>
+                  );
+                })}
+                <tr style={{borderTop:"2px solid var(--border)"}}>
+                  <td colSpan="4" style={{fontWeight:700,textAlign:"right",fontFamily:"var(--mono,monospace)",fontSize:11}}>TOTAL PENDIENTES</td>
+                  <td style={{textAlign:"right",fontWeight:700,color:"var(--green)",fontFamily:"var(--mono,monospace)"}}>{totalPorAlmacen}</td>
                   <td></td>
                 </tr>
               </tbody>
@@ -2449,6 +2515,11 @@ function PanelConfig({ fontSize, onFontSize, onClose, data, onChangePassword }) 
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v8.3.0", d:"Septiembre 2026", items:[
+    "Nuevo filtro por Ubicación en la pestaña Custodias, además de Cliente y Referencia",
+    "La lista de ubicaciones se calcula a partir de los datos reales (CENTRAL, MONTECRISTO, etc.); si aparece una ubicación nueva, sale sola en el desplegable sin tocar código",
+    "La vista por ubicación también se puede imprimir, útil para repasar el stock físicamente en el almacén",
+  ]},
   { v:"v8.2.6", d:"Septiembre 2026", items:[
     "Logo del panel lateral un poco más pequeño",
     "'Yakoba Moreno' y 'Claude Code', en el pie del panel, pasan a verse en blanco (modo oscuro) en vez de verde/azul marino",
@@ -2609,8 +2680,9 @@ const MANUAL_SECTIONS = [
     "Al confirmar se genera un documento de 2 páginas listo para imprimir.",
   ]},
   { t:"Pestaña Custodias", b:[
-    "Filtra por cliente o por referencia para ver el stock activo.",
-    "Botón Imprimir para dar información rápida sobre lo que tiene un cliente en almacén.",
+    "Filtra por cliente, por referencia o por ubicación para ver el stock activo.",
+    "Ubicación: la lista sale directamente de los datos (CENTRAL, MONTECRISTO...); si se usa una ubicación nueva, aparece sola sin tocar nada.",
+    "Botón Imprimir en las tres vistas — la de ubicación es útil para repasar el stock físicamente en el almacén.",
   ]},
   { t:"Pestaña Entregas", b:[
     "Filtra por cliente o por referencia para ver todas las entregas realizadas.",
@@ -2701,7 +2773,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v8.2.6</div>
+                <div className="about-version">v8.3.0</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
@@ -3271,7 +3343,7 @@ function MainApp({ onLogout, userEmail }) {
         <div className="sidebar-footer">
           <div className="krafted">Diseñado por <span>Yakoba Moreno</span></div>
           <div className="krafted" style={{ marginTop: 6 }}>Desarrollado en <span>Claude Code</span></div>
-          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.2.6</span></div>
+          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.3.0</span></div>
         </div>
       </aside>
 
