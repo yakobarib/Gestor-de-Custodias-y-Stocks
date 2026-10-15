@@ -1744,19 +1744,6 @@ function DetalleMovimiento({ m, data }) {
   const etiqueta = txt => <span style={{ color:"var(--text-faint)" }}>{txt} </span>;
   const dato = (txt, color) => <b style={{ color: color || "var(--text)", marginRight:14 }}>{txt}</b>;
   const resumen = { display:"flex", flexWrap:"wrap", rowGap:4, fontFamily:mono, fontSize:10, color:"var(--text-dim)" };
-  const titulo = txt => <div style={{ fontFamily:mono, fontSize:9, letterSpacing:1, textTransform:"uppercase", color:"var(--text-faint)", marginTop:2 }}>{txt}</div>;
-  const filaSalida = (key, num, numColor, texto, uds, udsColor) => (
-    <div key={key} className="history-linea">
-      <div /><div />
-      <div style={{ fontFamily:mono, fontSize:10, fontWeight:700, color:numColor }}>{num}</div>
-      <div style={{ minWidth:0, fontFamily:mono, fontSize:11, color:"var(--text-dim)" }}>{texto}</div>
-      <div style={{ textAlign:"right", whiteSpace:"nowrap" }}>
-        <span style={{ fontFamily:mono, fontSize:13, fontWeight:700, color:udsColor }}>{uds}</span>
-        <span style={{ fontFamily:mono, fontSize:10, color:"var(--text-dim)", marginLeft:4 }}>Uds.</span>
-      </div>
-    </div>
-  );
-
   if (m.tipo === "ENTREGA") {
     return m.lineas.map((l, i) => (
       <div key={l.id || i} className="history-linea">
@@ -1779,36 +1766,20 @@ function DetalleMovimiento({ m, data }) {
 
   if (m.tipo === "CUSTODIA") {
     const c = m.custodia;
-    const pend = c.udsTotales - c.udsEntregadas;
-    const entregas = data.entregas.filter(e => e.custodiaId === c.id)
-      .sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""));
-    const prestamos = (data.prestamos || []).filter(p => p.custodiaId === c.id);
     return (
-      <>
-        <div style={resumen}>
-          <span>{etiqueta("Compradas")}{dato(c.udsTotales)}</span>
-          <span>{etiqueta("Entregadas")}{dato(c.udsEntregadas, colorTipo("ENTREGA").fg)}</span>
-          <span>{etiqueta("Pendientes")}{dato(pend, "var(--green)")}</span>
-          {c.almacen && <span>{etiqueta("Almacén")}{dato(c.almacen)}</span>}
-          {c.albaran && <span>{etiqueta("Albarán compra")}{dato(c.albaran)}</span>}
-          {c.promSkrit && <span>{etiqueta("Nº Promoción Skrit")}{dato(c.promSkrit)}</span>}
-          {c.operarioCustodia && <span>{etiqueta("Registrada por")}{dato(c.operarioCustodia)}</span>}
-          {c.notas && <span>{etiqueta("Notas")}{dato(c.notas)}</span>}
+      <div className="history-linea">
+        <div /><div />
+        <div style={{ fontFamily:mono, fontSize:10, fontWeight:700, color: colorTipo("CUSTODIA").fg }}>{c.albaran || ""}</div>
+        <div style={{ minWidth:0, fontSize:11 }}>
+          <span style={{ fontFamily:mono, fontWeight:700, color:"var(--text)" }}>{c.referencia}</span>
+          <span style={{ fontFamily:mono, color:"var(--text-dim)" }}> · {c.producto}</span>
+          {c.almacen && <span className="tag tag-accent" style={{ marginLeft:8 }}>{c.almacen}</span>}
         </div>
-        {titulo("Salidas de esta custodia")}
-        {entregas.length === 0 && prestamos.length === 0 && (
-          <div style={{ fontFamily:mono, fontSize:11, fontStyle:"italic", color:"var(--text-faint)" }}>Sin salidas registradas</div>
-        )}
-        {entregas.map(e => filaSalida(
-          "e" + e.id, e.numEntrega ? "#" + e.numEntrega : "", colorTipo("ENTREGA").fg,
-          `Entrega · ${fmt(e.fecha)}${e.operario ? " · " + e.operario : ""}`, e.uds, colorTipo("ENTREGA").fg
-        ))}
-        {prestamos.map(p => filaSalida(
-          "p" + p.id, "PRÉSTAMO", colorTipo("PRESTAMO").fg,
-          `Préstamo · ${fmt(p.fecha)}${p.clienteDeutor ? " · Para: " + p.clienteDeutor : ""} · ${p.saldado ? "SALDADO" : "ACTIVO"}`,
-          p.uds, colorTipo("PRESTAMO").fg
-        ))}
-      </>
+        <div style={{ textAlign:"right", whiteSpace:"nowrap" }}>
+          <span style={{ fontFamily:mono, fontSize:13, fontWeight:700, color: colorTipo("CUSTODIA").fg }}>{c.udsTotales}</span>
+          <span style={{ fontFamily:mono, fontSize:10, color:"var(--text-dim)", marginLeft:4 }}>Uds.</span>
+        </div>
+      </div>
     );
   }
 
@@ -2783,6 +2754,9 @@ function PanelConfig({ fontSize, onFontSize, onClose, data, onChangePassword }) 
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v8.6.1", d:"Octubre 2026", items:[
+    "Histórico: al desplegar una custodia ahora se ve solo una línea con albarán, referencia, producto, almacén y unidades, con el mismo formato que las líneas de una entrega (se quita el resto de información, de momento)",
+  ]},
   { v:"v8.6.0", d:"Octubre 2026", items:[
     "Histórico: el botón de desplegar (ahora con un icono de flecha) aparece en todos los movimientos, no solo en las entregas múltiples",
     "Entrega: al desplegarla muestra cada producto con su número de entrega, referencia, almacén y unidades (también si es de un solo producto)",
@@ -2988,7 +2962,7 @@ const MANUAL_SECTIONS = [
     "Filtros: botones 'Todos / Custodias / Entregas / Préstamos' arriba, de selección única.",
     "Orden: del más reciente al más antiguo.",
     "👁 Previsualizar / 🖨️ Reimprimir el documento original de cada fila, incluidos los préstamos.",
-    "Desplegar un movimiento: el botón de flecha a la derecha de las unidades (en cualquier movimiento) abre su detalle. Entrega: cada producto entregado con su nº de entrega y unidades. Custodia: resumen y lista de sus salidas (entregas y préstamos). Préstamo: custodia de origen, destinatario, estado y motivo. Pulsa de nuevo para cerrarlo.",
+    "Desplegar un movimiento: el botón de flecha a la derecha de las unidades (en cualquier movimiento) abre su detalle. Entrega: cada producto entregado con su nº de entrega y unidades. Custodia: una línea con albarán, referencia, producto, almacén y unidades. Préstamo: custodia de origen, destinatario, estado y motivo. Pulsa de nuevo para cerrarlo.",
     "Imprimir histórico: el botón 🖨️ Imprimir de arriba a la derecha imprime el listado completo, movimiento a movimiento, tal como lo ves (según el botón de tipo y el buscador). Las entregas salen desplegadas en árbol, con una rama por producto. Para el histórico de un cliente, escribe su nombre en el buscador y pulsa Imprimir.",
     "Hora de registro: el listado impreso incluye la hora, minuto y segundo en que se guardó cada movimiento. Los registros anteriores a la migración de datos no la conservan y salen con '—'.",
   ]},
@@ -3064,7 +3038,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v8.6.0</div>
+                <div className="about-version">v8.6.1</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
@@ -3637,7 +3611,7 @@ function MainApp({ onLogout, userEmail }) {
         <div className="sidebar-footer">
           <div className="krafted">Diseñado por <span>Yakoba Moreno</span></div>
           <div className="krafted" style={{ marginTop: 6 }}>Desarrollado en <span>Claude Code</span></div>
-          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.6.0</span></div>
+          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.6.1</span></div>
         </div>
       </aside>
 
