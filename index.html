@@ -467,6 +467,16 @@ function fmtNow() {
   return new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+function fmtDateTime(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleString("es-ES", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+  });
+}
+
 // Estima los litros por unidad a partir del texto libre de "Descripción del
 // producto" (ej. "MDX+ 5W40 5L" → 5, "REFRIGERANTE 500ML" → 0.5). Es una
 // aproximación: si el texto no trae un patrón reconocible, cuenta como 0.
@@ -1724,6 +1734,80 @@ ${custodia.notas ? `<div class="row"><span class="label">Notas:</span><span>${cu
   }
 }
 
+// ─── IMPRIMIR HISTÓRICO (lo que se ve en pantalla, movimiento a movimiento) ──
+function printHistorialDoc(movimientos, tipoLabel, busqueda, lotesMigrados) {
+  if (movimientos.length === 0) { alert("No hay movimientos para imprimir con el filtro actual."); return; }
+  const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const date = fmtNow();
+  const TIPOS = {
+    CUSTODIA: { label: "CUSTODIA", color: "#1a7f4b" },
+    ENTREGA:  { label: "ENTREGA",  color: "#E20613" },
+    PRESTAMO: { label: "PRÉSTAMO", color: "#ff8c00" },
+  };
+
+  const rows = movimientos.map(m => {
+    const t = TIPOS[m.tipo] || TIPOS.ENTREGA;
+    const hora = m.createdAt && !lotesMigrados.has(m.createdAt) ? fmtDateTime(m.createdAt) : "—";
+    const operario = m.operario && m.operario !== "Importado" ? m.operario : "—";
+    return `<tr>
+      <td>${fmt(m.fecha)}</td>
+      <td>${hora}</td>
+      <td style="font-weight:bold;color:${t.color}">${t.label}</td>
+      <td>${esc(m.cliente)}</td>
+      <td style="font-weight:bold">${esc(m.referencia) || "—"}</td>
+      <td>${esc(m.producto) || "—"}</td>
+      <td>${esc(m.almacen) || "—"}</td>
+      <td style="text-align:right;font-weight:bold;color:${t.color}">${m.uds}</td>
+      <td>${esc(operario)}</td>
+      <td>${esc(m.albaran) || "—"}</td>
+      <td>${esc(m.notas) || ""}</td>
+    </tr>`;
+  }).join("");
+
+  const resumen = ["CUSTODIA", "ENTREGA", "PRESTAMO"].map(tipo => {
+    const lista = movimientos.filter(m => m.tipo === tipo);
+    if (lista.length === 0) return null;
+    const uds = lista.reduce((s, m) => s + m.uds, 0);
+    return `${TIPOS[tipo].label.charAt(0) + TIPOS[tipo].label.slice(1).toLowerCase()}s: ${lista.length} (${uds} uds.)`;
+  }).filter(Boolean).join(" · ");
+
+  const subtitulo = `Tipo: ${tipoLabel}` + (busqueda ? ` · Búsqueda: ${esc(busqueda)}` : "");
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>Histórico de movimientos</title>
+<style>
+  @page { size: A4 landscape; margin: 10mm; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:Arial,sans-serif; font-size:9px; color:#002D5A; padding:12px; }
+  .header { display:flex; justify-content:space-between; border-bottom:3px solid #E20613; padding-bottom:8px; margin-bottom:10px; }
+  .company { font-size:16px; font-weight:bold; }
+  .doc-title { text-align:right; }
+  .doc-title h2 { font-size:13px; color:#E20613; }
+  table { width:100%; border-collapse:collapse; }
+  th { background:#002D5A; color:#fff; padding:4px 5px; text-align:left; font-size:8px; }
+  td { padding:3px 5px; border-bottom:1px solid #eee; vertical-align:top; }
+  tr { page-break-inside:avoid; }
+  tr:nth-child(even) td { background:#f9f9f9; }
+  .resumen { margin-top:10px; font-size:10px; font-weight:bold; border-top:2px solid #002D5A; padding-top:6px; }
+  .footer { margin-top:12px; font-size:8px; color:#999; text-align:center; border-top:1px solid #ddd; padding-top:6px; }
+</style></head><body>
+<div class="header">
+  <div><div class="company">RECAMBIOS IBIZA S.A.</div><div style="font-size:9px;color:#666">AD Parts Distribución</div></div>
+  <div class="doc-title"><h2>HISTÓRICO DE MOVIMIENTOS</h2><div style="font-size:9px;color:#666">${subtitulo}</div><div style="font-size:9px;color:#666">Fecha: ${date} · ${movimientos.length} movimientos</div></div>
+</div>
+<table>
+  <thead><tr><th>Fecha</th><th>Registrado (hh:mm:ss)</th><th>Tipo</th><th>Cliente</th><th>Referencia</th><th>Producto</th><th>Almacén</th><th style="text-align:right">Uds.</th><th>Operario</th><th>Albarán / Nº</th><th>Notas</th></tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+<div class="resumen">${resumen}</div>
+<div class="footer">Recambios Ibiza S.A. · AD Parts Distribución · Generado el ${date}. Los registros anteriores a la migración de datos no conservan hora de registro.</div>
+</body></html>`;
+
+  const win = window.open("", "_blank", "width=1100,height=750");
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => win.print(), 500);
+}
+
 // ─── HISTORIAL DE MOVIMIENTOS ────────────────────────────────────────────────
 function Historial({ data }) {
   const [search, setSearch] = useState("");
@@ -1732,7 +1816,7 @@ function Historial({ data }) {
   // Combinar custodias (ENTRADA), entregas agrupadas (SALIDA) y préstamos
   // temporales en un solo timeline
   const gruposEntrega = agruparEntregas(data.entregas, data.custodias);
-  const movimientos = [
+  const todos = [
     ...data.custodias.map(c => ({
       id: "c-" + c.id, tipo: "CUSTODIA",
       fecha: c.fecha || "", cliente: c.cliente,
@@ -1781,7 +1865,17 @@ function Historial({ data }) {
         createdAt: p.createdAt || "",
       };
     })
-  ]
+  ];
+
+  // Los registros anteriores a la migración a tablas propias comparten todos el
+  // mismo created_at (el momento de la migración), así que no tienen hora real.
+  // Si 3 o más movimientos comparten exactamente la misma marca, se considera
+  // un lote migrado y se imprime sin hora.
+  const conteoCreatedAt = {};
+  todos.forEach(m => { if (m.createdAt) conteoCreatedAt[m.createdAt] = (conteoCreatedAt[m.createdAt] || 0) + 1; });
+  const lotesMigrados = new Set(Object.keys(conteoCreatedAt).filter(k => conteoCreatedAt[k] >= 3));
+
+  const movimientos = todos
   .filter(m => filterTipo === "TODOS" || m.tipo === filterTipo)
   .filter(m => {
     if (!search) return true;
@@ -1822,6 +1916,10 @@ function Historial({ data }) {
             <div className="section-title">Histórico de movimientos</div>
             <div className="section-sub">{movimientos.length} movimientos · {data.custodias.length} custodias · {data.entregas.length} entregas · {(data.prestamos||[]).length} préstamos</div>
           </div>
+          <button className="btn btn-primary"
+            onClick={() => printHistorialDoc(movimientos, FILTROS.find(f => f[0] === filterTipo)[1], search, lotesMigrados)}>
+            🖨️ Imprimir
+          </button>
         </div>
         <div style={{ display:"flex", gap:6, marginBottom:12, flexWrap:"wrap" }}>
           {FILTROS.map(([key, label]) => (
@@ -2527,6 +2625,11 @@ function PanelConfig({ fontSize, onFontSize, onClose, data, onChangePassword }) 
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v8.4.0", d:"Octubre 2026", items:[
+    "Nuevo botón 🖨️ Imprimir en Histórico: imprime movimiento a movimiento exactamente lo que se ve en pantalla (respeta el botón Todos / Custodias / Entregas / Préstamos y el buscador)",
+    "El listado impreso muestra fecha, hora de registro con segundos, tipo, cliente, referencia, producto, almacén, unidades, operario, albarán y notas, en el mismo orden que la pantalla, con un resumen al final",
+    "Los registros anteriores a la migración de datos no conservan hora de registro y salen con '—' en esa columna",
+  ]},
   { v:"v8.3.1", d:"Septiembre 2026", items:[
     "Fix en Histórico (filtro 'Todos'): dentro del mismo día, las entregas ya no aparecen siempre por encima de custodias y préstamos más recientes",
     "El orden dentro de un mismo día ahora usa el momento real en que se guardó cada movimiento, no el número de entrega (que solo existía para entregas)",
@@ -2716,6 +2819,8 @@ const MANUAL_SECTIONS = [
     "Filtros: botones 'Todos / Custodias / Entregas / Préstamos' arriba, de selección única.",
     "Orden: del más reciente al más antiguo.",
     "👁 Previsualizar / 🖨️ Reimprimir el documento original de cada fila, incluidos los préstamos.",
+    "Imprimir histórico: el botón 🖨️ Imprimir de arriba a la derecha imprime el listado completo, movimiento a movimiento, tal como lo ves (según el botón de tipo y el buscador). Para el histórico de un cliente, escribe su nombre en el buscador y pulsa Imprimir.",
+    "Hora de registro: el listado impreso incluye la hora, minuto y segundo en que se guardó cada movimiento. Los registros anteriores a la migración de datos no la conservan y salen con '—'.",
   ]},
   { t:"Préstamos temporales", b:[
     "Botón: ⚠️ naranja en cada fila de custodia activa.",
@@ -2789,7 +2894,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v8.3.1</div>
+                <div className="about-version">v8.4.0</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
@@ -3362,7 +3467,7 @@ function MainApp({ onLogout, userEmail }) {
         <div className="sidebar-footer">
           <div className="krafted">Diseñado por <span>Yakoba Moreno</span></div>
           <div className="krafted" style={{ marginTop: 6 }}>Desarrollado en <span>Claude Code</span></div>
-          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.3.1</span></div>
+          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.4.0</span></div>
         </div>
       </aside>
 
