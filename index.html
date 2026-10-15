@@ -137,7 +137,11 @@
   .alert { border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
   .alert-warn { background: var(--accent-dim); border: 1px solid var(--accent-glow); color: var(--accent); }
   .alert-info { background: rgba(0,45,90,0.07); border: 1px solid rgba(0,45,90,0.2); color: var(--blue2); }
-  .history-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin-bottom: 6px; display: grid; grid-template-columns: 90px 110px 90px 1fr 56px 72px; gap: 8px; align-items: center; transition: box-shadow 0.15s; }
+  .history-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin-bottom: 6px; display: grid; grid-template-columns: 90px 110px 90px 1fr 56px 28px 72px; gap: 8px; align-items: center; transition: box-shadow 0.15s; }
+  .history-toggle { width: 24px; height: 24px; padding: 0; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text-dim); cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .history-toggle:hover, .history-toggle.open { border-color: var(--accent); color: var(--accent); }
+  .history-lineas { grid-column: 1 / -1; border-top: 1px dashed var(--border); margin-top: 2px; padding-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+  .history-linea { display: grid; grid-template-columns: 90px 110px 90px 1fr 56px 28px 72px; gap: 8px; align-items: baseline; }
   .history-item:hover { box-shadow: 0 2px 16px rgba(226,6,19,0.15); transform: translateY(-1px); }
   .history-actions { display: flex; gap: 4px; align-items: center; justify-content: flex-end; }
   .history-date { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); white-space: nowrap; }
@@ -1812,6 +1816,8 @@ function printHistorialDoc(movimientos, tipoLabel, busqueda, lotesMigrados) {
 function Historial({ data }) {
   const [search, setSearch] = useState("");
   const [filterTipo, setFilterTipo] = useState("TODOS");
+  const [abiertos, setAbiertos] = useState({});
+  const toggleAbierto = id => setAbiertos(a => ({ ...a, [id]: !a[id] }));
 
   // Combinar custodias (ENTRADA), entregas agrupadas (SALIDA) y préstamos
   // temporales en un solo timeline
@@ -1982,7 +1988,17 @@ function Historial({ data }) {
             <span style={{ fontFamily:"var(--mono,monospace)", fontSize:15, fontWeight:700, color: colorTipo(m.tipo).fg }}>{m.uds}</span>
             <span style={{ fontFamily:"var(--mono,monospace)", fontSize:11, color:"var(--text-dim)", marginLeft:4 }}>Uds.</span>
           </div>
-          {/* Col 6: acciones */}
+          {/* Col 6: desplegar productos (solo entregas con varias líneas) */}
+          <div>
+            {m.esMultiple && m.lineas && (
+              <button className={"history-toggle" + (abiertos[m.id] ? " open" : "")}
+                title={abiertos[m.id] ? "Ocultar productos" : "Ver productos entregados"}
+                onClick={e => { e.stopPropagation(); toggleAbierto(m.id); }}>
+                {abiertos[m.id] ? "▴" : "▾"}
+              </button>
+            )}
+          </div>
+          {/* Col 7: acciones */}
           <div className="history-actions">
             <button className="btn btn-ghost btn-sm btn-icon" title="Previsualizar documento"
               onClick={e => { e.stopPropagation(); reprintMovimiento(m, data, false); }}
@@ -1991,6 +2007,28 @@ function Historial({ data }) {
               onClick={e => { e.stopPropagation(); reprintMovimiento(m, data, true); }}
               style={{ padding:"4px 7px", fontSize:14 }}>🖨️</button>
           </div>
+          {/* Líneas desplegadas */}
+          {m.esMultiple && m.lineas && abiertos[m.id] && (
+            <div className="history-lineas">
+              {m.lineas.map((l, i) => (
+                <div key={l.id || i} className="history-linea">
+                  <div /><div />
+                  <div style={{ fontFamily:"var(--mono,monospace)", fontSize:10, fontWeight:700, color: colorTipo("ENTREGA").fg }}>
+                    {l.numEntrega ? "#" + l.numEntrega : ""}
+                  </div>
+                  <div style={{ minWidth:0, fontSize:11 }}>
+                    <span style={{ fontFamily:"var(--mono,monospace)", fontWeight:700, color:"var(--text)" }}>{l.referencia}</span>
+                    <span style={{ fontFamily:"var(--mono,monospace)", color:"var(--text-dim)" }}> · {l.producto}</span>
+                    {l.almacen && <span className="tag tag-accent" style={{ marginLeft:8 }}>{l.almacen}</span>}
+                  </div>
+                  <div style={{ textAlign:"right", whiteSpace:"nowrap" }}>
+                    <span style={{ fontFamily:"var(--mono,monospace)", fontSize:13, fontWeight:700, color: colorTipo("ENTREGA").fg }}>{l.uds}</span>
+                    <span style={{ fontFamily:"var(--mono,monospace)", fontSize:10, color:"var(--text-dim)", marginLeft:4 }}>Uds.</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       ))}
       </div>{/* end scroll body */}
@@ -2625,6 +2663,10 @@ function PanelConfig({ fontSize, onFontSize, onClose, data, onChangePassword }) 
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v8.5.0", d:"Octubre 2026", items:[
+    "Histórico: las entregas de varios productos tienen ahora un botón ▾ a la derecha de las unidades que despliega la fila y muestra cada producto entregado con sus unidades (y el número de cada línea)",
+    "Cerrado, el Histórico se ve igual que antes; las filas de un solo producto no tienen botón",
+  ]},
   { v:"v8.4.0", d:"Octubre 2026", items:[
     "Nuevo botón 🖨️ Imprimir en Histórico: imprime movimiento a movimiento exactamente lo que se ve en pantalla (respeta el botón Todos / Custodias / Entregas / Préstamos y el buscador)",
     "El listado impreso muestra fecha, hora de registro con segundos, tipo, cliente, referencia, producto, almacén, unidades, operario, albarán y notas, en el mismo orden que la pantalla, con un resumen al final",
@@ -2819,6 +2861,7 @@ const MANUAL_SECTIONS = [
     "Filtros: botones 'Todos / Custodias / Entregas / Préstamos' arriba, de selección única.",
     "Orden: del más reciente al más antiguo.",
     "👁 Previsualizar / 🖨️ Reimprimir el documento original de cada fila, incluidos los préstamos.",
+    "Entregas de varios productos: pulsa el botón ▾ a la derecha de las unidades para desplegar la fila y ver cada producto entregado con sus unidades; ▴ para volver a cerrarla.",
     "Imprimir histórico: el botón 🖨️ Imprimir de arriba a la derecha imprime el listado completo, movimiento a movimiento, tal como lo ves (según el botón de tipo y el buscador). Para el histórico de un cliente, escribe su nombre en el buscador y pulsa Imprimir.",
     "Hora de registro: el listado impreso incluye la hora, minuto y segundo en que se guardó cada movimiento. Los registros anteriores a la migración de datos no la conservan y salen con '—'.",
   ]},
@@ -2894,7 +2937,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v8.4.0</div>
+                <div className="about-version">v8.5.0</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
@@ -3467,7 +3510,7 @@ function MainApp({ onLogout, userEmail }) {
         <div className="sidebar-footer">
           <div className="krafted">Diseñado por <span>Yakoba Moreno</span></div>
           <div className="krafted" style={{ marginTop: 6 }}>Desarrollado en <span>Claude Code</span></div>
-          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.4.0</span></div>
+          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.5.0</span></div>
         </div>
       </aside>
 
