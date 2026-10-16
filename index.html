@@ -125,6 +125,14 @@
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   .form-group { display: flex; flex-direction: column; gap: 6px; }
   .form-group.full { grid-column: 1 / -1; }
+  .lineas-custodia { display: flex; flex-direction: column; gap: 12px; margin-top: 18px; }
+  .linea-custodia { border: 1px solid var(--border); border-radius: 10px; background: var(--surface2); padding: 12px 14px; }
+  .linea-custodia-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-family: var(--mono, monospace); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-dim); }
+  .linea-custodia-quitar { background: none; border: none; cursor: pointer; font-size: 13px; padding: 2px 4px; opacity: .7; }
+  .linea-custodia-quitar:hover { opacity: 1; }
+  .linea-custodia-grid { display: grid; grid-template-columns: 1fr 110px 140px; gap: 12px; }
+  .linea-custodia-desc { grid-column: 1 / -1; }
+  @media (max-width: 768px) { .linea-custodia-grid { grid-template-columns: 1fr 1fr; } .linea-custodia-grid .form-group:first-child { grid-column: 1 / -1; } }
   label { font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim); }
   input, select, textarea { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text); outline: none; transition: border-color 0.15s; width: 100%; }
   input:focus, select:focus, textarea:focus { border-color: var(--accent); }
@@ -664,28 +672,53 @@ function ModalNuevaCustodia({ onClose, onSave, clientes, custodias = [] }) {
   custodias.forEach(c => { if (c.referencia && c.producto) refCatalog[c.referencia.trim().toUpperCase()] = c.producto; });
   const refList = Object.keys(refCatalog).sort();
 
+  // Datos comunes del albarán (una sola vez)
   const [form, setForm] = useState({
     cliente: "", albaran: "", facturaLibre: "", operarioCustodia: "", promSkrit: "",
-    fecha: new Date().toISOString().split("T")[0],
-    referencia: "", producto: "", almacen: "CENTRAL", udsTotales: "", notas: ""
+    fecha: new Date().toISOString().split("T")[0], notas: ""
   });
   const set = (k, v) => setForm(f => ({ ...f, [k]: typeof v === "string" ? v.toUpperCase() : v }));
 
+  // Una línea por producto del albarán
+  const nuevaLinea = (almacen = "CENTRAL") => ({ key: uid(), referencia: "", producto: "", almacen, udsTotales: "" });
+  const [lineas, setLineas] = useState(() => [nuevaLinea()]);
+  const [focoKey, setFocoKey] = useState(null);
+  const setLinea = (key, k, v) => setLineas(ls => ls.map(l => l.key === key ? { ...l, [k]: typeof v === "string" ? v.toUpperCase() : v } : l));
+  const anadirLinea = () => {
+    const nueva = nuevaLinea(lineas[lineas.length - 1].almacen);
+    setLineas(ls => [...ls, nueva]);
+    setFocoKey(nueva.key);
+  };
+  const quitarLinea = key => setLineas(ls => ls.length > 1 ? ls.filter(l => l.key !== key) : ls);
+
   const handleSave = () => {
-    if (!form.cliente || !form.referencia || !form.udsTotales) {
-      alert("Rellena al menos: Cliente, Referencia y Unidades totales"); return;
-    }
+    if (!form.cliente.trim()) { alert("Rellena el Cliente"); return; }
     if (!form.operarioCustodia.trim()) {
       alert("⚠️ Obligatorio rellenar quién hace la custodia"); return;
     }
-    onSave({ ...form, udsTotales: Number(form.udsTotales), id: uid(), udsEntregadas: 0 });
+    // Las líneas totalmente vacías se ignoran
+    const rellenas = lineas.map((l, i) => ({ ...l, n: i + 1 }))
+      .filter(l => l.referencia.trim() || l.producto.trim() || l.udsTotales !== "");
+    if (rellenas.length === 0) { alert("Rellena al menos un producto: Referencia y Unidades totales"); return; }
+    for (const l of rellenas) {
+      if (!l.referencia.trim() || !(Number(l.udsTotales) > 0)) {
+        alert(`Producto ${l.n}: rellena la Referencia y unas Unidades totales mayores que 0`); return;
+      }
+    }
+    onSave(rellenas.map(l => ({
+      ...form,
+      referencia: l.referencia, producto: l.producto, almacen: l.almacen,
+      udsTotales: Number(l.udsTotales), id: uid(), udsEntregadas: 0,
+    })));
   };
+
+  const varias = lineas.length > 1;
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal">
         <div className="modal-title">📦 Nueva Custodia</div>
-        <div className="modal-sub">Registra un nuevo lote de stock en custodia para un cliente</div>
+        <div className="modal-sub">Registra stock en custodia para un cliente · puedes añadir varios productos del mismo albarán</div>
 
         <div className="form-grid">
           <div className="form-group">
@@ -706,47 +739,78 @@ function ModalNuevaCustodia({ onClose, onSave, clientes, custodias = [] }) {
             <input value={form.operarioCustodia} onChange={e => set("operarioCustodia", e.target.value)} placeholder="Nombre de quien registra la custodia" style={{ borderColor: !form.operarioCustodia ? "var(--accent)" : "var(--border)" }} />
           </div>
           <div className="form-group">
-            <label>Referencia *</label>
-            <input
-              list="ref-catalog-list"
-              value={form.referencia}
-              onChange={e => {
-                const val = e.target.value;
-                set("referencia", val);
-                if (refCatalog[val.trim().toUpperCase()]) set("producto", refCatalog[val.trim().toUpperCase()]);
-              }}
-              placeholder="Ej: ADP35005"
-            />
-            <datalist id="ref-catalog-list">
-              {refList.map(r => <option key={r} value={r}>{refCatalog[r]}</option>)}
-            </datalist>
-          </div>
-          <div className="form-group">
             <label>Nº Promoción Skrit</label>
             <input value={form.promSkrit} onChange={e => set("promSkrit", e.target.value)} />
-          </div>
-          <div className="form-group">
-            <label>Unidades totales *</label>
-            <input type="number" min="1" value={form.udsTotales} onChange={e => set("udsTotales", e.target.value)} placeholder="0" />
-          </div>
-          <div className="form-group full">
-            <label>Descripción del producto</label>
-            <input value={form.producto} onChange={e => set("producto", e.target.value)} placeholder="Ej: MDX+ 5W40 5L" />
-          </div>
-          <div className="form-group">
-            <label>Almacén</label>
-            <select value={form.almacen} onChange={e => set("almacen", e.target.value)}>
-              <option>CENTRAL</option><option>MONTECRISTO</option><option>EXTERNO</option>
-            </select>
           </div>
           <div className="form-group">
             <label>Notas</label>
             <input value={form.notas} onChange={e => set("notas", e.target.value)} placeholder="Observaciones..." />
           </div>
         </div>
+
+        <div className="lineas-custodia">
+          {lineas.map((l, i) => (
+            <div key={l.key} className="linea-custodia">
+              <div className="linea-custodia-head">
+                <span>Producto {i + 1}</span>
+                {varias && (
+                  <button type="button" className="linea-custodia-quitar" title="Quitar este producto" onClick={() => quitarLinea(l.key)}>🗑️</button>
+                )}
+              </div>
+              <div className="linea-custodia-grid">
+                <div className="form-group">
+                  <label>Referencia *</label>
+                  <input
+                    list="ref-catalog-list"
+                    value={l.referencia}
+                    autoFocus={l.key === focoKey}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setLinea(l.key, "referencia", val);
+                      if (refCatalog[val.trim().toUpperCase()]) setLinea(l.key, "producto", refCatalog[val.trim().toUpperCase()]);
+                    }}
+                    placeholder="Ej: ADP35005"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Unidades totales *</label>
+                  <input
+                    type="number" min="1" value={l.udsTotales}
+                    onChange={e => setLinea(l.key, "udsTotales", e.target.value)}
+                    onKeyDown={e => {
+                      // Tab en las unidades de la última línea → abre la siguiente
+                      if (e.key === "Tab" && !e.shiftKey && i === lineas.length - 1 && l.udsTotales !== "") {
+                        e.preventDefault();
+                        anadirLinea();
+                      }
+                    }}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Almacén</label>
+                  <select value={l.almacen} onChange={e => setLinea(l.key, "almacen", e.target.value)}>
+                    <option>CENTRAL</option><option>MONTECRISTO</option><option>EXTERNO</option>
+                  </select>
+                </div>
+                <div className="form-group linea-custodia-desc">
+                  <label>Descripción del producto</label>
+                  <input value={l.producto} onChange={e => setLinea(l.key, "producto", e.target.value)} placeholder="Ej: MDX+ 5W40 5L" />
+                </div>
+              </div>
+            </div>
+          ))}
+          <datalist id="ref-catalog-list">
+            {refList.map(r => <option key={r} value={r}>{refCatalog[r]}</option>)}
+          </datalist>
+          <button type="button" className="btn btn-ghost btn-sm" style={{ alignSelf: "flex-start" }} onClick={anadirLinea}>+ Añadir otro producto</button>
+        </div>
+
         <div className="form-actions">
           <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
-          <button className="btn btn-primary" onClick={handleSave}>✓ Guardar custodia</button>
+          <button className="btn btn-primary" onClick={handleSave}>
+            {varias ? `✓ Guardar ${lineas.length} custodias` : "✓ Guardar custodia"}
+          </button>
         </div>
       </div>
     </div>
@@ -2754,6 +2818,13 @@ function PanelConfig({ fontSize, onFontSize, onClose, data, onChangePassword }) 
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v8.7.0", d:"Octubre 2026", items:[
+    "Nueva Custodia: ahora se pueden introducir varios productos del mismo albarán en un único cuadro de diálogo",
+    "Los datos comunes (cliente, fecha, albarán, responsable, Nº Promoción Skrit y notas) se escriben una sola vez; cada producto tiene su línea con referencia, descripción, almacén y unidades",
+    "Botón '+ Añadir otro producto' (y Tab desde las unidades del último producto para abrir otra línea); cada línea se puede quitar con la papelera",
+    "Se guardan todas las custodias a la vez: o se guardan todas o ninguna. Las líneas vacías se ignoran",
+    "Cada producto sigue siendo una custodia independiente, con su propio saldo y sus propias entregas",
+  ]},
   { v:"v8.6.1", d:"Octubre 2026", items:[
     "Histórico: al desplegar una custodia ahora se ve solo una línea con albarán, referencia, producto, almacén y unidades, con el mismo formato que las líneas de una entrega (se quita el resto de información, de momento)",
   ]},
@@ -2932,7 +3003,10 @@ const MANUAL_SECTIONS = [
   ]},
   { t:"Nueva Custodia", b:[
     "Botón: '+ Nueva custodia'.",
-    "Obligatorios: Cliente, Referencia, Unidades totales y Responsable/Operario.",
+    "Obligatorios: Cliente, Responsable/Operario y, en cada producto, Referencia y Unidades totales.",
+    "Varios productos del mismo albarán: rellena los datos comunes arriba (cliente, fecha, albarán, responsable, Nº Promoción Skrit y notas) y añade un producto por línea con el botón '+ Añadir otro producto'. También puedes pulsar Tab desde las unidades del último producto para abrir otra línea.",
+    "Quitar un producto: papelera 🗑️ de su línea. Las líneas totalmente vacías se ignoran al guardar.",
+    "Al guardar se crea una custodia por cada producto (todas a la vez, o ninguna si hay un error), cada una con su propio saldo y sus entregas.",
     "Autocompletado: al escribir una referencia ya registrada, la descripción del producto se rellena sola.",
     "Opcional: Nº Promoción Skrit.",
   ]},
@@ -3038,7 +3112,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v8.6.1</div>
+                <div className="about-version">v8.7.0</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
@@ -3434,10 +3508,11 @@ function MainApp({ onLogout, userEmail }) {
 
   const clientes = data ? [...new Set(data.custodias.map(c => c.cliente))].sort() : [];
 
-  const handleNuevaCustodia = (custodia) => persistGuard(async () => {
-    const [row] = await dbInsert('custodias', [toRow(custodia, CUSTODIA_FIELDS)]);
-    const saved = fromRow(row, CUSTODIA_FIELDS);
-    setData(d => ({ ...d, custodias: [...d.custodias, saved] }));
+  // Recibe una lista de custodias (un albarán con varios productos): una sola inserción, todas o ninguna
+  const handleNuevaCustodia = (nuevas) => persistGuard(async () => {
+    const rows = await dbInsert('custodias', nuevas.map(c => toRow(c, CUSTODIA_FIELDS)));
+    const guardadas = rows.map(r => fromRow(r, CUSTODIA_FIELDS));
+    setData(d => ({ ...d, custodias: [...d.custodias, ...guardadas] }));
     setModal(null);
   }, "No se pudo guardar la custodia. Comprueba tu conexión e inténtalo de nuevo.");
 
@@ -3611,7 +3686,7 @@ function MainApp({ onLogout, userEmail }) {
         <div className="sidebar-footer">
           <div className="krafted">Diseñado por <span>Yakoba Moreno</span></div>
           <div className="krafted" style={{ marginTop: 6 }}>Desarrollado en <span>Claude Code</span></div>
-          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.6.1</span></div>
+          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.7.0</span></div>
         </div>
       </aside>
 
