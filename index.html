@@ -699,10 +699,10 @@ function ModalNuevaCustodia({ onClose, onSave, clientes, custodias = [] }) {
     // Las líneas totalmente vacías se ignoran
     const rellenas = lineas.map((l, i) => ({ ...l, n: i + 1 }))
       .filter(l => l.referencia.trim() || l.producto.trim() || l.udsTotales !== "");
-    if (rellenas.length === 0) { alert("Rellena al menos un producto: Referencia y Unidades totales"); return; }
+    if (rellenas.length === 0) { alert("Rellena al menos un producto: Referencia y Unidades"); return; }
     for (const l of rellenas) {
       if (!l.referencia.trim() || !(Number(l.udsTotales) > 0)) {
-        alert(`Producto ${l.n}: rellena la Referencia y unas Unidades totales mayores que 0`); return;
+        alert(`Producto ${l.n}: rellena la Referencia y unas Unidades mayores que 0`); return;
       }
     }
     onSave(rellenas.map(l => ({
@@ -773,7 +773,7 @@ function ModalNuevaCustodia({ onClose, onSave, clientes, custodias = [] }) {
                   />
                 </div>
                 <div className="form-group">
-                  <label>Unidades totales *</label>
+                  <label>Unidades *</label>
                   <input
                     type="number" min="1" value={l.udsTotales}
                     onChange={e => setLinea(l.key, "udsTotales", e.target.value)}
@@ -2818,6 +2818,9 @@ function PanelConfig({ fontSize, onFontSize, onClose, data, onChangePassword }) 
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v8.7.1", d:"Octubre 2026", items:[
+    "Nueva Custodia: el campo de unidades de cada producto se llama ahora 'Unidades *' para que la etiqueta quepa en una línea y el campo quede a la misma altura que Referencia y Almacén",
+  ]},
   { v:"v8.7.0", d:"Octubre 2026", items:[
     "Nueva Custodia: ahora se pueden introducir varios productos del mismo albarán en un único cuadro de diálogo",
     "Los datos comunes (cliente, fecha, albarán, responsable, Nº Promoción Skrit y notas) se escriben una sola vez; cada producto tiene su línea con referencia, descripción, almacén y unidades",
@@ -3003,7 +3006,7 @@ const MANUAL_SECTIONS = [
   ]},
   { t:"Nueva Custodia", b:[
     "Botón: '+ Nueva custodia'.",
-    "Obligatorios: Cliente, Responsable/Operario y, en cada producto, Referencia y Unidades totales.",
+    "Obligatorios: Cliente, Responsable/Operario y, en cada producto, Referencia y Unidades.",
     "Varios productos del mismo albarán: rellena los datos comunes arriba (cliente, fecha, albarán, responsable, Nº Promoción Skrit y notas) y añade un producto por línea con el botón '+ Añadir otro producto'. También puedes pulsar Tab desde las unidades del último producto para abrir otra línea.",
     "Quitar un producto: papelera 🗑️ de su línea. Las líneas totalmente vacías se ignoran al guardar.",
     "Al guardar se crea una custodia por cada producto (todas a la vez, o ninguna si hay un error), cada una con su propio saldo y sus entregas.",
@@ -3112,7 +3115,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v8.7.0</div>
+                <div className="about-version">v8.7.1</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
@@ -3686,7 +3689,7 @@ function MainApp({ onLogout, userEmail }) {
         <div className="sidebar-footer">
           <div className="krafted">Diseñado por <span>Yakoba Moreno</span></div>
           <div className="krafted" style={{ marginTop: 6 }}>Desarrollado en <span>Claude Code</span></div>
-          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.7.0</span></div>
+          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.7.1</span></div>
         </div>
       </aside>
 
