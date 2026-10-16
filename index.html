@@ -127,7 +127,7 @@
   .form-group.full { grid-column: 1 / -1; }
   .lineas-custodia { display: flex; flex-direction: column; gap: 12px; margin-top: 18px; }
   .linea-custodia { border: 1px solid var(--border); border-radius: 10px; background: var(--surface2); padding: 12px 14px; }
-  .linea-custodia-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-family: var(--mono, monospace); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-dim); }
+  .linea-custodia-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-family: var(--mono, monospace); font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text); }
   .linea-custodia-quitar { background: none; border: none; cursor: pointer; font-size: 13px; padding: 2px 4px; opacity: .7; }
   .linea-custodia-quitar:hover { opacity: 1; }
   .linea-custodia-grid { display: grid; grid-template-columns: 1fr 110px 140px; gap: 12px; }
@@ -2818,6 +2818,9 @@ function PanelConfig({ fontSize, onFontSize, onClose, data, onChangePassword }) 
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v8.7.2", d:"Octubre 2026", items:[
+    "Nueva Custodia: el título de cada producto ('PRODUCTO 1', 'PRODUCTO 2'...) tiene ahora más presencia: un punto más grande, en negrita y en el color principal del texto (blanco en modo oscuro)",
+  ]},
   { v:"v8.7.1", d:"Octubre 2026", items:[
     "Nueva Custodia: el campo de unidades de cada producto se llama ahora 'Unidades *' para que la etiqueta quepa en una línea y el campo quede a la misma altura que Referencia y Almacén",
   ]},
@@ -3115,7 +3118,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v8.7.1</div>
+                <div className="about-version">v8.7.2</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
@@ -3689,7 +3692,7 @@ function MainApp({ onLogout, userEmail }) {
         <div className="sidebar-footer">
           <div className="krafted">Diseñado por <span>Yakoba Moreno</span></div>
           <div className="krafted" style={{ marginTop: 6 }}>Desarrollado en <span>Claude Code</span></div>
-          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.7.1</span></div>
+          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.7.2</span></div>
         </div>
       </aside>
 
