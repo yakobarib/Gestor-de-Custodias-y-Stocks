@@ -23,7 +23,8 @@
     --text: #002D5A; --text-dim: #4a5568; --text-faint: #a0aec0;
   }
 
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  /* Cifras 'lining' en todos los textos: la fuente Syne usa por defecto números más bajos que las letras */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; font-variant-numeric: lining-nums; }
   body { background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; min-height: 100vh; transition: background 0.2s, color 0.2s; }
   .app { display: flex; flex-direction: column; min-height: 100vh; }
   .header { display: flex; align-items: center; justify-content: space-between; padding: 0 28px; height: 60px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
@@ -2818,6 +2819,9 @@ function PanelConfig({ fontSize, onFontSize, onClose, data, onChangePassword }) 
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v8.7.3", d:"Octubre 2026", items:[
+    "Fix tipografía: en las referencias y números escritos con la letra de títulos (por ejemplo 'Ref: ADP59590SSAGM') las cifras salían más pequeñas y desalineadas respecto a las letras; ahora todos los números de la app tienen la misma altura que las letras, sin cambiar el tipo de letra",
+  ]},
   { v:"v8.7.2", d:"Octubre 2026", items:[
     "Nueva Custodia: el título de cada producto ('PRODUCTO 1', 'PRODUCTO 2'...) tiene ahora más presencia: un punto más grande, en negrita y en el color principal del texto (blanco en modo oscuro)",
   ]},
@@ -3118,7 +3122,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v8.7.2</div>
+                <div className="about-version">v8.7.3</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
@@ -3692,7 +3696,7 @@ function MainApp({ onLogout, userEmail }) {
         <div className="sidebar-footer">
           <div className="krafted">Diseñado por <span>Yakoba Moreno</span></div>
           <div className="krafted" style={{ marginTop: 6 }}>Desarrollado en <span>Claude Code</span></div>
-          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.7.2</span></div>
+          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.7.3</span></div>
         </div>
       </aside>
 
