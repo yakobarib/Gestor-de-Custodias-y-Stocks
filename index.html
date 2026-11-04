@@ -1573,12 +1573,12 @@ function Dashboard({ data, isMobile, onNuevaCustodia, onNuevaEntrega, onEntrega,
         <div className="kpi">
           <div className="kpi-label">Lubricantes</div>
           <div className="kpi-value"><AnimatedNumber value={Math.round(litrosLubricantes)} /></div>
-          <div className="kpi-sub">Litros en custodia</div>
+          <div className="kpi-sub">litros en custodia</div>
         </div>
         <div className="kpi">
           <div className="kpi-label">Químicos</div>
           <div className="kpi-value"><AnimatedNumber value={Math.round(litrosQuimicos)} /></div>
-          <div className="kpi-sub">Litros en custodia</div>
+          <div className="kpi-sub">litros en custodia</div>
         </div>
         <div className="kpi">
           <div className="kpi-label">Baterías</div>
@@ -2858,6 +2858,9 @@ function PanelConfig({ fontSize, onFontSize, onClose, data, onChangePassword }) 
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v8.8.2", d:"Noviembre 2026", items:[
+    "Panel de Control: el subtítulo de las tarjetas Lubricantes y Químicos queda en minúscula ('litros en custodia'), igual que el resto de subtítulos de las tarjetas",
+  ]},
   { v:"v8.8.1", d:"Noviembre 2026", items:[
     "Panel de Control: el subtítulo de las tarjetas Lubricantes y Químicos pasa de 'litros, según descripción' a 'Litros en custodia'",
   ]},
@@ -3176,7 +3179,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v8.8.1</div>
+                <div className="about-version">v8.8.2</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
@@ -3770,7 +3773,7 @@ function MainApp({ onLogout, userEmail }) {
         <div className="sidebar-footer">
           <div className="krafted">Diseñado por <span>Yakoba Moreno</span></div>
           <div className="krafted" style={{ marginTop: 6 }}>Desarrollado en <span>Claude Code</span></div>
-          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.8.1</span></div>
+          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.8.2</span></div>
         </div>
       </aside>
 
