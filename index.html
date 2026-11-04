@@ -78,7 +78,7 @@
     .header { background: var(--bg); border-bottom: none; box-shadow: none; }
   }
   .main { flex: 1; padding: 28px; max-width: 1400px; width: 100%; margin: 0 auto; }
-  .kpis { display: grid; grid-template-columns: repeat(5,1fr); gap: 14px; margin-bottom: 24px; }
+  .kpis { display: grid; grid-template-columns: repeat(6,1fr); gap: 14px; margin-bottom: 24px; }
   .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; transition: box-shadow 0.2s; }
   .kpi:hover { box-shadow: 0 4px 16px rgba(226,6,19,0.1); }
   .kpi-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
@@ -131,7 +131,7 @@
   .linea-custodia-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-family: var(--mono, monospace); font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text); }
   .linea-custodia-quitar { background: none; border: none; cursor: pointer; font-size: 13px; padding: 2px 4px; opacity: .7; }
   .linea-custodia-quitar:hover { opacity: 1; }
-  .linea-custodia-grid { display: grid; grid-template-columns: 1fr 110px 140px; gap: 12px; }
+  .linea-custodia-grid { display: grid; grid-template-columns: 1fr 90px 150px 140px; gap: 12px; }
   .linea-custodia-desc { grid-column: 1 / -1; }
   @media (max-width: 768px) { .linea-custodia-grid { grid-template-columns: 1fr 1fr; } .linea-custodia-grid .form-group:first-child { grid-column: 1 / -1; } }
   label { font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim); }
@@ -170,7 +170,7 @@
   ::-webkit-scrollbar-track { background: var(--bg); }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
-  @media (max-width: 768px) { .kpis { grid-template-columns: 1fr 1fr; } .kpis .kpi:nth-child(5) { grid-column: 1 / -1; } .form-grid { grid-template-columns: 1fr; } .main { padding: 16px; } .form-group.full { grid-column: auto; } }
+  @media (max-width: 768px) { .kpis { grid-template-columns: 1fr 1fr; } .form-grid { grid-template-columns: 1fr; } .main { padding: 16px; } .form-group.full { grid-column: auto; } }
 
   /* ── Mobile ── */
   @media (max-width: 640px) {
@@ -416,7 +416,7 @@ const CUSTODIA_FIELDS = {
   operarioCustodia: "operario_custodia", fecha: "fecha", referencia: "referencia",
   producto: "producto", almacen: "almacen", udsTotales: "uds_totales",
   udsEntregadas: "uds_entregadas", notas: "notas", promSkrit: "prom_skrit",
-  createdAt: "created_at",
+  categoria: "categoria", createdAt: "created_at",
 };
 const ENTREGA_FIELDS = {
   custodiaId: "custodia_id", fecha: "fecha", uds: "uds", albaran: "albaran",
@@ -488,6 +488,20 @@ function fmtDateTime(iso) {
     day: "2-digit", month: "2-digit", year: "numeric",
     hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
   });
+}
+
+// Categorías de producto (se asignan por referencia). El id es lo que se guarda
+// en la columna custodias.categoria; las tarjetas del Panel de Control usan las tres primeras.
+const CATEGORIAS = [
+  { id: "LUBRICANTE", label: "LUBRICANTE", color: "#ff8c00",     bg: "rgba(255,140,0,0.12)" },
+  { id: "QUIMICO",    label: "QUÍMICO",    color: "#2b8be6",     bg: "rgba(43,139,230,0.14)" },
+  { id: "BATERIA",    label: "BATERÍA",    color: "var(--green)", bg: "rgba(46,125,50,0.12)" },
+  { id: "OTROS",      label: "OTROS",      color: "var(--text-dim)", bg: "var(--surface2)" },
+];
+function CategoriaTag({ categoria }) {
+  const cat = CATEGORIAS.find(c => c.id === categoria);
+  if (!cat) return <span className="tag tag-red">SIN ASIGNAR</span>;
+  return <span className="tag" style={{ background: cat.bg, color: cat.color, whiteSpace: "nowrap" }}>{cat.label}</span>;
 }
 
 // Estima los litros por unidad a partir del texto libre de "Descripción del
@@ -672,6 +686,9 @@ function ModalNuevaCustodia({ onClose, onSave, clientes, custodias = [] }) {
   const refCatalog = {};
   custodias.forEach(c => { if (c.referencia && c.producto) refCatalog[c.referencia.trim().toUpperCase()] = c.producto; });
   const refList = Object.keys(refCatalog).sort();
+  // Categoría ya asignada a cada referencia (la primera que aparezca informada)
+  const refCategoria = {};
+  custodias.forEach(c => { const k = (c.referencia || "").trim().toUpperCase(); if (k && c.categoria && !refCategoria[k]) refCategoria[k] = c.categoria; });
 
   // Datos comunes del albarán (una sola vez)
   const [form, setForm] = useState({
@@ -681,7 +698,7 @@ function ModalNuevaCustodia({ onClose, onSave, clientes, custodias = [] }) {
   const set = (k, v) => setForm(f => ({ ...f, [k]: typeof v === "string" ? v.toUpperCase() : v }));
 
   // Una línea por producto del albarán
-  const nuevaLinea = (almacen = "CENTRAL") => ({ key: uid(), referencia: "", producto: "", almacen, udsTotales: "" });
+  const nuevaLinea = (almacen = "CENTRAL") => ({ key: uid(), referencia: "", producto: "", categoria: "", almacen, udsTotales: "" });
   const [lineas, setLineas] = useState(() => [nuevaLinea()]);
   const [focoKey, setFocoKey] = useState(null);
   const setLinea = (key, k, v) => setLineas(ls => ls.map(l => l.key === key ? { ...l, [k]: typeof v === "string" ? v.toUpperCase() : v } : l));
@@ -705,10 +722,13 @@ function ModalNuevaCustodia({ onClose, onSave, clientes, custodias = [] }) {
       if (!l.referencia.trim() || !(Number(l.udsTotales) > 0)) {
         alert(`Producto ${l.n}: rellena la Referencia y unas Unidades mayores que 0`); return;
       }
+      if (!l.categoria) {
+        alert(`Producto ${l.n}: elige la Categoría (Lubricante, Químico, Batería u Otros)`); return;
+      }
     }
     onSave(rellenas.map(l => ({
       ...form,
-      referencia: l.referencia, producto: l.producto, almacen: l.almacen,
+      referencia: l.referencia, producto: l.producto, categoria: l.categoria, almacen: l.almacen,
       udsTotales: Number(l.udsTotales), id: uid(), udsEntregadas: 0,
     })));
   };
@@ -717,7 +737,7 @@ function ModalNuevaCustodia({ onClose, onSave, clientes, custodias = [] }) {
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal">
+      <div className="modal" style={{ maxWidth: 760 }}>
         <div className="modal-title">📦 Nueva Custodia</div>
         <div className="modal-sub">Registra stock en custodia para un cliente · puedes añadir varios productos del mismo albarán</div>
 
@@ -768,7 +788,9 @@ function ModalNuevaCustodia({ onClose, onSave, clientes, custodias = [] }) {
                     onChange={e => {
                       const val = e.target.value;
                       setLinea(l.key, "referencia", val);
-                      if (refCatalog[val.trim().toUpperCase()]) setLinea(l.key, "producto", refCatalog[val.trim().toUpperCase()]);
+                      const clave = val.trim().toUpperCase();
+                      if (refCatalog[clave]) setLinea(l.key, "producto", refCatalog[clave]);
+                      if (refCategoria[clave]) setLinea(l.key, "categoria", refCategoria[clave]);
                     }}
                     placeholder="Ej: ADP35005"
                   />
@@ -778,15 +800,16 @@ function ModalNuevaCustodia({ onClose, onSave, clientes, custodias = [] }) {
                   <input
                     type="number" min="1" value={l.udsTotales}
                     onChange={e => setLinea(l.key, "udsTotales", e.target.value)}
-                    onKeyDown={e => {
-                      // Tab en las unidades de la última línea → abre la siguiente
-                      if (e.key === "Tab" && !e.shiftKey && i === lineas.length - 1 && l.udsTotales !== "") {
-                        e.preventDefault();
-                        anadirLinea();
-                      }
-                    }}
                     placeholder="0"
                   />
+                </div>
+                <div className="form-group">
+                  <label>Categoría *</label>
+                  <select value={l.categoria} onChange={e => setLinea(l.key, "categoria", e.target.value)}
+                    style={{ borderColor: !l.categoria ? "var(--accent)" : "var(--border)" }}>
+                    <option value="">Elegir…</option>
+                    {CATEGORIAS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                  </select>
                 </div>
                 <div className="form-group">
                   <label>Almacén</label>
@@ -796,7 +819,14 @@ function ModalNuevaCustodia({ onClose, onSave, clientes, custodias = [] }) {
                 </div>
                 <div className="form-group linea-custodia-desc">
                   <label>Descripción del producto</label>
-                  <input value={l.producto} onChange={e => setLinea(l.key, "producto", e.target.value)} placeholder="Ej: MDX+ 5W40 5L" />
+                  <input value={l.producto} onChange={e => setLinea(l.key, "producto", e.target.value)} placeholder="Ej: MDX+ 5W40 5L"
+                    onKeyDown={e => {
+                      // Tab en la descripción de la última línea ya rellena → abre la siguiente
+                      if (e.key === "Tab" && !e.shiftKey && i === lineas.length - 1 && l.referencia.trim() && l.udsTotales !== "") {
+                        e.preventDefault();
+                        anadirLinea();
+                      }
+                    }} />
                 </div>
               </div>
             </div>
@@ -1487,14 +1517,18 @@ function Dashboard({ data, isMobile, onNuevaCustodia, onNuevaEntrega, onEntrega,
     .sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""))
     : [];
 
-  const totalUds = data.custodias.reduce((s, c) => s + c.udsTotales, 0);
-  const entregadasUds = data.custodias.reduce((s, c) => s + c.udsEntregadas, 0);
   const activasCnt = data.custodias.filter(c => c.udsTotales - c.udsEntregadas > 0).length;
   const clientesCnt = new Set(data.custodias.map(c => c.cliente)).size;
-  const litrosCustodia = data.custodias.reduce((s, c) => {
+  // Pendiente en custodia de una categoría: en litros (según la descripción) o en unidades
+  const pendienteCategoria = (categoria, enLitros) => data.custodias.reduce((s, c) => {
+    if (c.categoria !== categoria) return s;
     const pendientes = c.udsTotales - c.udsEntregadas;
-    return pendientes > 0 ? s + pendientes * parseLitrosPorUnidad(c.producto) : s;
+    if (pendientes <= 0) return s;
+    return s + (enLitros ? pendientes * parseLitrosPorUnidad(c.producto) : pendientes);
   }, 0);
+  const litrosLubricantes = pendienteCategoria("LUBRICANTE", true);
+  const litrosQuimicos = pendienteCategoria("QUIMICO", true);
+  const bateriasUds = pendienteCategoria("BATERIA", false);
   const deudasActivas = (data.prestamos || []).filter(p => !p.saldado);
 
   return (
@@ -1537,14 +1571,19 @@ function Dashboard({ data, isMobile, onNuevaCustodia, onNuevaEntrega, onEntrega,
           <div className="kpi-sub">clientes distintos</div>
         </div>
         <div className="kpi">
-          <div className="kpi-label">Unidades en almacén</div>
-          <div className="kpi-value green"><AnimatedNumber value={totalUds - entregadasUds} /></div>
-          <div className="kpi-sub">pendientes de entrega</div>
+          <div className="kpi-label">Lubricantes</div>
+          <div className="kpi-value"><AnimatedNumber value={Math.round(litrosLubricantes)} /></div>
+          <div className="kpi-sub">litros, según descripción</div>
         </div>
         <div className="kpi">
-          <div className="kpi-label">Litros en custodia</div>
-          <div className="kpi-value"><AnimatedNumber value={Math.round(litrosCustodia)} /></div>
-          <div className="kpi-sub">estimado, según descripción</div>
+          <div className="kpi-label">Químicos</div>
+          <div className="kpi-value"><AnimatedNumber value={Math.round(litrosQuimicos)} /></div>
+          <div className="kpi-sub">litros, según descripción</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-label">Baterías</div>
+          <div className="kpi-value"><AnimatedNumber value={bateriasUds} /></div>
+          <div className="kpi-sub">unidades en custodia</div>
         </div>
         <div className="kpi">
           <div className="kpi-label">Deudas activas</div>
@@ -2819,6 +2858,14 @@ function PanelConfig({ fontSize, onFontSize, onClose, data, onChangePassword }) 
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v8.8.0", d:"Noviembre 2026", items:[
+    "Panel de Control: la tarjeta 'Unidades en almacén' y la antigua 'Litros en custodia' se sustituyen por tres tarjetas nuevas: Lubricantes (litros), Químicos (litros) y Baterías (unidades). Custodias activas, Clientes con stock y Deudas activas se mantienen",
+    "Cada referencia tiene ahora una Categoría: Lubricante, Químico, Batería u Otros. Las tarjetas suman solo lo pendiente de entrega de cada categoría; 'Otros' y los productos sin asignar no suman en ninguna",
+    "Nueva Custodia: nuevo campo Categoría en cada producto, entre Unidades y Almacén (obligatorio). Si la referencia ya existe, la categoría se rellena sola. El cuadro es más ancho para que todo quepa en una línea",
+    "Pestaña Productos: nueva columna Categoría en el listado (y en el listado impreso), y un desplegable Categoría dentro de ✏️ Editar. Cambiar solo la categoría se guarda directamente, sin aviso de cambio masivo, y se aplica a todas las custodias de esa referencia",
+    "Las referencias que todavía no tienen categoría aparecen como 'SIN ASIGNAR' en el listado de Productos",
+    "Al abrir otra línea de producto en Nueva Custodia, el atajo Tab pasa a funcionar desde la Descripción del último producto",
+  ]},
   { v:"v8.7.3", d:"Octubre 2026", items:[
     "Fix tipografía: en las referencias y números escritos con la letra de títulos (por ejemplo 'Ref: ADP59590SSAGM') las cifras salían más pequeñas y desalineadas respecto a las letras; ahora todos los números de la app tienen la misma altura que las letras, sin cambiar el tipo de letra",
   ]},
@@ -3009,12 +3056,15 @@ const MANUAL_SECTIONS = [
     "Completadas: cambia el filtro de estado para ver las entregas ya realizadas de ese cliente.",
     "✏️ Editar / 🗑️ Eliminar entrega: en la vista Completadas. Editar cambia fecha, unidades, operario o notas. Eliminar borra la entrega por completo y devuelve automáticamente sus unidades al stock — útil si se registró una entrega equivocada.",
     "✏️ Editar / 🗑️ Eliminar custodia: en la vista de custodias activas, con confirmación antes de borrar.",
-    "Litros en custodia: estimación automática según la descripción del producto (ej. '5L', '500ML'); si no reconoce ningún patrón, esa custodia cuenta como 0 litros.",
+    "Tarjetas Lubricantes y Químicos: litros pendientes en custodia de cada categoría, estimados según la descripción del producto (ej. '5L', '500ML'); si no reconoce ningún patrón, esa custodia cuenta como 0 litros.",
+    "Tarjeta Baterías: unidades pendientes en custodia de la categoría Batería.",
+    "Los productos de categoría 'Otros' o sin categoría asignada no suman en ninguna de las tres tarjetas.",
   ]},
   { t:"Nueva Custodia", b:[
     "Botón: '+ Nueva custodia'.",
-    "Obligatorios: Cliente, Responsable/Operario y, en cada producto, Referencia y Unidades.",
-    "Varios productos del mismo albarán: rellena los datos comunes arriba (cliente, fecha, albarán, responsable, Nº Promoción Skrit y notas) y añade un producto por línea con el botón '+ Añadir otro producto'. También puedes pulsar Tab desde las unidades del último producto para abrir otra línea.",
+    "Obligatorios: Cliente, Responsable/Operario y, en cada producto, Referencia, Unidades y Categoría.",
+    "Categoría (Lubricante, Químico, Batería u Otros): se elige en cada producto. Si la referencia ya existe, se rellena sola. Con ella el Panel de Control sabe en qué tarjeta sumar el producto.",
+    "Varios productos del mismo albarán: rellena los datos comunes arriba (cliente, fecha, albarán, responsable, Nº Promoción Skrit y notas) y añade un producto por línea con el botón '+ Añadir otro producto'. También puedes pulsar Tab desde la descripción del último producto para abrir otra línea.",
     "Quitar un producto: papelera 🗑️ de su línea. Las líneas totalmente vacías se ignoran al guardar.",
     "Al guardar se crea una custodia por cada producto (todas a la vez, o ninguna si hay un error), cada una con su propio saldo y sus entregas.",
     "Autocompletado: al escribir una referencia ya registrada, la descripción del producto se rellena sola.",
@@ -3038,7 +3088,8 @@ const MANUAL_SECTIONS = [
   { t:"Pestaña Productos", b:[
     "Vista de stock agrupada por referencia y almacén.",
     "Filtra por referencia o por descripción.",
-    "Edición masiva: cambia referencia o descripción y se aplica a todas las custodias con esa referencia.",
+    "Edición masiva: cambia referencia, descripción o categoría y se aplica a todas las custodias con esa referencia.",
+    "Categoría: columna del listado (Lubricante, Químico, Batería, Otros). Las referencias sin categoría salen como 'SIN ASIGNAR'; asígnala con ✏️ Editar. Si solo cambias la categoría se guarda directamente.",
     "Alerta ⚠️ si hay préstamos activos de esa referencia.",
   ]},
   { t:"Histórico", b:[
@@ -3122,7 +3173,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v8.7.3</div>
+                <div className="about-version">v8.8.0</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
@@ -3193,7 +3244,8 @@ function printProductosDoc(productos) {
     Object.entries(p.almacenes).forEach(([alm, uds], i) => {
       rows += '<tr>'
         + (i === 0 ? '<td rowspan="' + Object.keys(p.almacenes).length + '" style="font-weight:bold;vertical-align:top">' + p.referencia + '</td>'
-                   + '<td rowspan="' + Object.keys(p.almacenes).length + '" style="vertical-align:top">' + p.producto + '</td>' : '')
+                   + '<td rowspan="' + Object.keys(p.almacenes).length + '" style="vertical-align:top">' + p.producto + '</td>'
+                   + '<td rowspan="' + Object.keys(p.almacenes).length + '" style="vertical-align:top">' + ((CATEGORIAS.find(c => c.id === p.categoria) || {}).label || '—') + '</td>' : '')
         + '<td>' + alm + '</td>'
         + '<td style="text-align:right;font-weight:bold;color:#1a7f4b">' + uds + '</td>'
         + (i === 0 ? '<td rowspan="' + Object.keys(p.almacenes).length + '" style="text-align:right;font-weight:bold;color:#E20613;vertical-align:top">' + p.totalPend + '</td>' : '')
@@ -3206,9 +3258,9 @@ function printProductosDoc(productos) {
   const html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Stock de Productos</title><style>' + css + '</style></head><body>'
     + '<div class="header"><div><div class="company">RECAMBIOS IBIZA S.A.</div><div style="font-size:9px;color:#666">AD Parts Distribucion</div></div>'
     + '<div style="text-align:right"><div style="font-size:13px;font-weight:bold;color:#E20613">LISTADO DE STOCK EN CUSTODIA</div><div style="font-size:9px;color:#666">Fecha: ' + date + '</div></div></div>'
-    + '<table><thead><tr><th>Referencia</th><th>Producto</th><th>Almacen</th><th style="text-align:right">Uds.</th><th style="text-align:right">Total</th><th>Alertas</th></tr></thead>'
+    + '<table><thead><tr><th>Referencia</th><th>Producto</th><th>Categoría</th><th>Almacen</th><th style="text-align:right">Uds.</th><th style="text-align:right">Total</th><th>Alertas</th></tr></thead>'
     + '<tbody>' + rows
-    + '<tr class="total"><td colspan="4" style="text-align:right">TOTAL UNIDADES EN STOCK</td><td style="text-align:right;color:#E20613">' + totalUds + '</td><td></td></tr>'
+    + '<tr class="total"><td colspan="5" style="text-align:right">TOTAL UNIDADES EN STOCK</td><td style="text-align:right;color:#E20613">' + totalUds + '</td><td></td></tr>'
     + '</tbody></table>'
     + '<div class="footer">Recambios Ibiza S.A. &middot; AD Parts &middot; ' + date + '</div></body></html>';
   const win = window.open('', '_blank', 'width=900,height=700');
@@ -3232,7 +3284,8 @@ function TabProductos({ data, onBulkUpdateRef }) {
   const refMap = {};
   data.custodias.filter(c => c.udsTotales - c.udsEntregadas > 0).forEach(c => {
     const key = c.referencia;
-    if (!refMap[key]) refMap[key] = { referencia: c.referencia, producto: c.producto, almacenes: {}, totalPend: 0, tieneDeuda: false, custodias: [] };
+    if (!refMap[key]) refMap[key] = { referencia: c.referencia, producto: c.producto, categoria: "", almacenes: {}, totalPend: 0, tieneDeuda: false, custodias: [] };
+    if (!refMap[key].categoria && c.categoria) refMap[key].categoria = c.categoria;
     const pend = c.udsTotales - c.udsEntregadas;
     refMap[key].almacenes[c.almacen] = (refMap[key].almacenes[c.almacen] || 0) + pend;
     refMap[key].totalPend += pend;
@@ -3278,7 +3331,7 @@ function TabProductos({ data, onBulkUpdateRef }) {
         <div className="table-wrap">
           <table>
             <thead><tr>
-              <th>Referencia</th><th>Descripción</th><th>Almacén</th>
+              <th>Referencia</th><th>Descripción</th><th style={{width:110}}>Categoría</th><th>Almacén</th>
               <th style={{textAlign:"right",width:70}}>Uds.</th>
               <th style={{textAlign:"right",width:70}}>Total</th>
               <th style={{width:100}}>Alertas</th>
@@ -3290,6 +3343,7 @@ function TabProductos({ data, onBulkUpdateRef }) {
                   <tr key={p.referencia + alm}>
                     {i === 0 && <td rowSpan={Object.keys(p.almacenes).length} style={{ fontFamily:"var(--mono,monospace)", fontWeight:700, color:"var(--text)", verticalAlign:"middle" }}>{p.referencia}</td>}
                     {i === 0 && <td rowSpan={Object.keys(p.almacenes).length} style={{ verticalAlign:"middle" }}>{p.producto}</td>}
+                    {i === 0 && <td rowSpan={Object.keys(p.almacenes).length} style={{ verticalAlign:"middle" }}><CategoriaTag categoria={p.categoria} /></td>}
                     <td><span className="tag tag-accent">{alm}</span></td>
                     <td style={{ textAlign:"right", fontWeight:700, color:"var(--green)" }}>{Object.keys(p.almacenes).length > 1 ? uds : ""}</td>
                     {i === 0 && <td rowSpan={Object.keys(p.almacenes).length} style={{ textAlign:"right", fontWeight:700, color:"var(--green)", verticalAlign:"middle", fontSize:15 }}>{p.totalPend}</td>}
@@ -3298,7 +3352,7 @@ function TabProductos({ data, onBulkUpdateRef }) {
                     </td>}
                     {i === 0 && <td rowSpan={Object.keys(p.almacenes).length} style={{ verticalAlign:"middle" }}>
                       <button className="btn btn-sm" style={{ background:"rgba(0,45,90,0.1)", color:"var(--blue2)", border:"1px solid rgba(0,45,90,0.2)" }}
-                        onClick={() => setEditando({ refOld: p.referencia, referencia: p.referencia, producto: p.producto })}>
+                        onClick={() => setEditando({ refOld: p.referencia, referencia: p.referencia, productoOld: p.producto, producto: p.producto, categoria: p.categoria })}>
                         ✏️ Editar
                       </button>
                     </td>}
@@ -3306,7 +3360,7 @@ function TabProductos({ data, onBulkUpdateRef }) {
                 ))
               ))}
               <tr style={{ borderTop:"2px solid var(--border)", background:"var(--surface2)" }}>
-                <td colSpan="4" style={{ fontFamily:"var(--mono,monospace)", fontWeight:700, textAlign:"right", fontSize:11 }}>TOTAL GENERAL</td>
+                <td colSpan="5" style={{ fontFamily:"var(--mono,monospace)", fontWeight:700, textAlign:"right", fontSize:11 }}>TOTAL GENERAL</td>
                 <td style={{ textAlign:"right", fontWeight:700, color:"var(--green)", fontFamily:"var(--mono,monospace)", fontSize:15 }}>{totalGeneral}</td>
                 <td colSpan="2"></td>
               </tr>
@@ -3333,10 +3387,25 @@ function TabProductos({ data, onBulkUpdateRef }) {
                 <label>Descripción del producto</label>
                 <input value={editando.producto} onChange={e => setEditando(prev => ({...prev, producto: e.target.value.toUpperCase()}))} />
               </div>
+              <div className="form-group">
+                <label>Categoría</label>
+                <select value={editando.categoria || ""} onChange={e => setEditando(prev => ({...prev, categoria: e.target.value}))}
+                  style={{ borderColor: !editando.categoria ? "var(--accent)" : "var(--border)" }}>
+                  <option value="">Sin asignar</option>
+                  {CATEGORIAS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                </select>
+              </div>
             </div>
             <div className="form-actions">
               <button className="btn btn-ghost" onClick={() => setEditando(null)}>Cancelar</button>
-              <button className="btn" style={{ background:"#ff8c00", color:"#fff" }} onClick={() => setConfirmEdit(true)}>Guardar cambios</button>
+              <button className="btn" style={{ background:"#ff8c00", color:"#fff" }} onClick={() => {
+                // Si solo cambia la categoría no hace falta el aviso de cambio masivo
+                const soloCategoria = editando.referencia === editando.refOld && editando.producto === editando.productoOld;
+                if (soloCategoria) {
+                  onBulkUpdateRef(editando.refOld, editando.referencia, editando.producto, editando.categoria);
+                  setEditando(null);
+                } else setConfirmEdit(true);
+              }}>Guardar cambios</button>
             </div>
           </div>
         </div>
@@ -3347,8 +3416,8 @@ function TabProductos({ data, onBulkUpdateRef }) {
           tipo="warn"
           labelConfirm="✓ Aplicar a todas"
           mensaje={"Referencia: " + editando.refOld + " → " + editando.referencia}
-          detalles={"Descripción: " + editando.producto}
-          onConfirm={() => { onBulkUpdateRef(editando.refOld, editando.referencia, editando.producto); setEditando(null); setConfirmEdit(false); }}
+          detalles={"Descripción: " + editando.producto + " · Categoría: " + ((CATEGORIAS.find(c => c.id === editando.categoria) || {}).label || "Sin asignar")}
+          onConfirm={() => { onBulkUpdateRef(editando.refOld, editando.referencia, editando.producto, editando.categoria); setEditando(null); setConfirmEdit(false); }}
           onClose={() => setConfirmEdit(false)}
         />
       )}
@@ -3612,11 +3681,13 @@ function MainApp({ onLogout, userEmail }) {
     document.documentElement.style.fontSize = scale;
   };
 
-  const handleBulkUpdateRef = (refOld, refNew, productoNew) => persistGuard(async () => {
-    await dbUpdateWhere('custodias', 'referencia', refOld, { referencia: refNew, producto: productoNew });
+  const handleBulkUpdateRef = (refOld, refNew, productoNew, categoriaNew) => persistGuard(async () => {
+    const cambios = { referencia: refNew, producto: productoNew };
+    if (categoriaNew) cambios.categoria = categoriaNew;
+    await dbUpdateWhere('custodias', 'referencia', refOld, cambios);
     setData(d => ({
       ...d,
-      custodias: d.custodias.map(c => c.referencia === refOld ? { ...c, referencia: refNew, producto: productoNew } : c),
+      custodias: d.custodias.map(c => c.referencia === refOld ? { ...c, ...cambios } : c),
     }));
   }, "No se pudo actualizar el producto. Inténtalo de nuevo.");
 
@@ -3696,7 +3767,7 @@ function MainApp({ onLogout, userEmail }) {
         <div className="sidebar-footer">
           <div className="krafted">Diseñado por <span>Yakoba Moreno</span></div>
           <div className="krafted" style={{ marginTop: 6 }}>Desarrollado en <span>Claude Code</span></div>
-          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.7.3</span></div>
+          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.8.0</span></div>
         </div>
       </aside>
 
