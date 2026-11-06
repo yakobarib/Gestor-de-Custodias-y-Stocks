@@ -146,11 +146,11 @@
   .alert { border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
   .alert-warn { background: var(--accent-dim); border: 1px solid var(--accent-glow); color: var(--accent); }
   .alert-info { background: rgba(0,45,90,0.07); border: 1px solid rgba(0,45,90,0.2); color: var(--blue2); }
-  .history-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin-bottom: 6px; display: grid; grid-template-columns: 90px 110px 90px 1fr 56px 28px 72px; gap: 8px; align-items: center; transition: box-shadow 0.15s; }
+  .history-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin-bottom: 6px; display: grid; grid-template-columns: 90px 110px 90px 1fr 56px 28px 112px; gap: 8px; align-items: center; transition: box-shadow 0.15s; }
   .history-toggle { width: 24px; height: 24px; padding: 0; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text-dim); cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
   .history-toggle:hover, .history-toggle.open { border-color: var(--accent); color: var(--accent); }
   .history-lineas { grid-column: 1 / -1; border-top: 1px dashed var(--border); margin-top: 2px; padding-top: 8px; display: flex; flex-direction: column; gap: 6px; }
-  .history-linea { display: grid; grid-template-columns: 90px 110px 90px 1fr 56px 28px 72px; gap: 8px; align-items: baseline; }
+  .history-linea { display: grid; grid-template-columns: 90px 110px 90px 1fr 56px 28px 112px; gap: 8px; align-items: baseline; }
   .history-item:hover { box-shadow: 0 2px 16px rgba(226,6,19,0.15); transform: translateY(-1px); }
   .history-actions { display: flex; gap: 4px; align-items: center; justify-content: flex-end; }
   .history-date { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); white-space: nowrap; }
@@ -421,6 +421,7 @@ const CUSTODIA_FIELDS = {
 const ENTREGA_FIELDS = {
   custodiaId: "custodia_id", fecha: "fecha", uds: "uds", albaran: "albaran",
   operario: "operario", notas: "notas", numEntrega: "num_entrega", grupoEntrega: "grupo_entrega",
+  anulada: "anulada", anuladaAt: "anulada_at", anuladaPor: "anulada_por", motivoAnulacion: "motivo_anulacion",
   createdAt: "created_at",
 };
 const PRESTAMO_FIELDS = {
@@ -445,9 +446,13 @@ async function loadData() {
   const [custRows, entRows, presRows] = await Promise.all([
     dbSelect("custodias"), dbSelect("entregas"), dbSelect("prestamos"),
   ]);
+  // Las líneas de entrega anuladas (revertidas) se separan: el resto de la app
+  // solo ve las entregas vigentes y el Histórico usa además las anuladas.
+  const todasEntregas = entRows.map(r => fromRow(r, ENTREGA_FIELDS));
   return {
     custodias: custRows.map(r => fromRow(r, CUSTODIA_FIELDS)),
-    entregas: entRows.map(r => fromRow(r, ENTREGA_FIELDS)),
+    entregas: todasEntregas.filter(e => !e.anulada),
+    entregasAnuladas: todasEntregas.filter(e => e.anulada),
     prestamos: presRows.map(r => fromRow(r, PRESTAMO_FIELDS)),
   };
 }
@@ -1849,23 +1854,49 @@ function DetalleMovimiento({ m, data }) {
   const dato = (txt, color) => <b style={{ color: color || "var(--text)", marginRight:14 }}>{txt}</b>;
   const resumen = { display:"flex", flexWrap:"wrap", rowGap:4, fontFamily:mono, fontSize:10, color:"var(--text-dim)" };
   if (m.tipo === "ENTREGA") {
-    return m.lineas.map((l, i) => (
-      <div key={l.id || i} className="history-linea">
-        <div /><div />
-        <div style={{ fontFamily:mono, fontSize:10, fontWeight:700, color: colorTipo("ENTREGA").fg }}>
-          {l.numEntrega ? "#" + l.numEntrega : ""}
-        </div>
-        <div style={{ minWidth:0, fontSize:11 }}>
-          <span style={{ fontFamily:mono, fontWeight:700, color:"var(--text)" }}>{l.referencia}</span>
-          <span style={{ fontFamily:mono, color:"var(--text-dim)" }}> · {l.producto}</span>
-          {l.almacen && <span className="tag tag-accent" style={{ marginLeft:8 }}>{l.almacen}</span>}
-        </div>
-        <div style={{ textAlign:"right", whiteSpace:"nowrap" }}>
-          <span style={{ fontFamily:mono, fontSize:13, fontWeight:700, color: colorTipo("ENTREGA").fg }}>{l.uds}</span>
-          <span style={{ fontFamily:mono, fontSize:10, color:"var(--text-dim)", marginLeft:4 }}>Uds.</span>
-        </div>
-      </div>
-    ));
+    return (
+      <>
+        {m.lineas.map((l, i) => (
+          <div key={l.id || i} className="history-linea">
+            <div /><div />
+            <div style={{ fontFamily:mono, fontSize:10, fontWeight:700, color: colorTipo("ENTREGA").fg }}>
+              {l.numEntrega ? "#" + l.numEntrega : ""}
+            </div>
+            <div style={{ minWidth:0, fontSize:11 }}>
+              <span style={{ fontFamily:mono, fontWeight:700, color:"var(--text)" }}>{l.referencia}</span>
+              <span style={{ fontFamily:mono, color:"var(--text-dim)" }}> · {l.producto}</span>
+              {l.almacen && <span className="tag tag-accent" style={{ marginLeft:8 }}>{l.almacen}</span>}
+            </div>
+            <div style={{ textAlign:"right", whiteSpace:"nowrap" }}>
+              <span style={{ fontFamily:mono, fontSize:13, fontWeight:700, color: colorTipo("ENTREGA").fg }}>{l.uds}</span>
+              <span style={{ fontFamily:mono, fontSize:10, color:"var(--text-dim)", marginLeft:4 }}>Uds.</span>
+            </div>
+          </div>
+        ))}
+        {(m.anuladas || []).map((l, i) => (
+          <div key={"anulada-" + (l.id || i)} className="history-linea">
+            <div /><div />
+            <div style={{ fontFamily:mono, fontSize:10, fontWeight:700, color:"var(--text-faint)", textDecoration:"line-through" }}>
+              {l.numEntrega ? "#" + l.numEntrega : ""}
+            </div>
+            <div style={{ minWidth:0, fontSize:11 }}>
+              <span style={{ textDecoration:"line-through", color:"var(--text-faint)" }}>
+                <span style={{ fontFamily:mono, fontWeight:700 }}>{l.referencia}</span>
+                <span style={{ fontFamily:mono }}> · {l.producto}</span>
+              </span>
+              <span className="tag tag-red" style={{ marginLeft:8 }}>ANULADA</span>
+              <div style={{ fontFamily:mono, fontSize:10, color:"var(--text-faint)", marginTop:2 }}>
+                {[l.motivo, l.anuladaPor && "por " + l.anuladaPor, l.anuladaAt && fmtDateTime(l.anuladaAt)].filter(Boolean).join(" · ")}
+              </div>
+            </div>
+            <div style={{ textAlign:"right", whiteSpace:"nowrap" }}>
+              <span style={{ fontFamily:mono, fontSize:13, fontWeight:700, color:"var(--text-faint)", textDecoration:"line-through" }}>{l.uds}</span>
+              <span style={{ fontFamily:mono, fontSize:10, color:"var(--text-faint)", marginLeft:4 }}>Uds.</span>
+            </div>
+          </div>
+        ))}
+      </>
+    );
   }
 
   if (m.tipo === "CUSTODIA") {
@@ -1920,17 +1951,33 @@ function printHistorialDoc(movimientos, tipoLabel, busqueda, lotesMigrados) {
     const t = TIPOS[m.tipo] || TIPOS.ENTREGA;
     const hora = m.createdAt && !lotesMigrados.has(m.createdAt) ? fmtDateTime(m.createdAt) : "—";
     const operario = m.operario && m.operario !== "Importado" ? m.operario : "—";
-    const esEntrega = m.tipo === "ENTREGA" && Array.isArray(m.lineas) && m.lineas.length > 0;
-    const n = esEntrega ? m.lineas.length : 0;
+    const activas = m.tipo === "ENTREGA" && Array.isArray(m.lineas) ? m.lineas : [];
+    const anuladas = m.tipo === "ENTREGA" && Array.isArray(m.anuladas) ? m.anuladas : [];
+    const esEntrega = activas.length > 0;
+    const n = activas.length;
+    const plural = (k, sing, plur) => k + " " + (k > 1 ? plur : sing);
 
-    // Una entrega se imprime como un albarán (cabecera) con sus productos colgando en árbol
-    const principal = esEntrega
+    // Una entrega se imprime como un albarán (cabecera) con sus productos colgando en árbol.
+    // Las líneas anuladas salen al final de la rama, tachadas y con su motivo.
+    const principal = m.soloAnulada
+      ? `<tr class="main">
+      <td>${fmt(m.fecha)}</td>
+      <td>${hora}</td>
+      <td style="font-weight:bold;color:#888">ENTREGA ANULADA</td>
+      <td style="font-weight:bold;color:#888">${esc(m.cliente)}</td>
+      <td colspan="3" style="color:#666;font-style:italic">Albarán anulado · ${plural(anuladas.length, "producto", "productos")}</td>
+      <td style="text-align:right;color:#888">—</td>
+      <td>${esc(operario)}</td>
+      <td>${esc(m.albaran) || "—"}</td>
+      <td></td>
+    </tr>`
+      : esEntrega
       ? `<tr class="main">
       <td>${fmt(m.fecha)}</td>
       <td>${hora}</td>
       <td style="font-weight:bold;color:${t.color}">${t.label}</td>
       <td style="font-weight:bold">${esc(m.cliente)}</td>
-      <td colspan="3" style="color:#666;font-style:italic">${n} producto${n > 1 ? "s" : ""} en este albarán</td>
+      <td colspan="3" style="color:#666;font-style:italic">${plural(n, "producto", "productos")} en este albarán${anuladas.length ? " · " + plural(anuladas.length, "anulado", "anulados") : ""}</td>
       <td style="text-align:right;font-weight:bold;color:${t.color}">${m.uds}</td>
       <td>${esc(operario)}</td>
       <td>${esc(m.albaran) || "—"}</td>
@@ -1950,28 +1997,37 @@ function printHistorialDoc(movimientos, tipoLabel, busqueda, lotesMigrados) {
       <td>${esc(m.notas) || ""}</td>
     </tr>`;
 
-    const ramas = esEntrega ? m.lineas.map((l, i) => {
-      const ultima = i === n - 1;
-      return `<tr class="sub${ultima ? " last" : ""}">
-      <td colspan="3" class="rama${ultima ? " fin" : ""}"><span class="nlin">${l.numEntrega ? "#" + esc(l.numEntrega) : ""}</span></td>
+    const ramas = [...activas.map(l => ({ l, anulada: false })), ...anuladas.map(l => ({ l, anulada: true }))]
+      .map(({ l, anulada }, i, arr) => {
+        const ultima = i === arr.length - 1;
+        const tachado = anulada ? "color:#999;text-decoration:line-through;" : "";
+        const nota = anulada
+          ? ["ANULADA", l.motivo && esc(l.motivo), l.anuladaPor && "por " + esc(l.anuladaPor), l.anuladaAt && fmtDateTime(l.anuladaAt)].filter(Boolean).join(" · ")
+          : "";
+        return `<tr class="sub${ultima ? " last" : ""}">
+      <td colspan="3" class="rama${ultima ? " fin" : ""}"><span class="nlin" style="${tachado}">${l.numEntrega ? "#" + esc(l.numEntrega) : ""}</span></td>
       <td></td>
-      <td style="font-weight:bold">${esc(l.referencia) || "—"}</td>
-      <td>${esc(l.producto) || "—"}</td>
-      <td>${esc(l.almacen) || "—"}</td>
-      <td style="text-align:right;font-weight:bold;color:${t.color}">${l.uds}</td>
-      <td colspan="3"></td>
+      <td style="font-weight:bold;${tachado}">${esc(l.referencia) || "—"}</td>
+      <td style="${tachado}">${esc(l.producto) || "—"}</td>
+      <td style="${tachado}">${esc(l.almacen) || "—"}</td>
+      <td style="text-align:right;font-weight:bold;${anulada ? tachado : "color:" + t.color}">${l.uds}</td>
+      <td colspan="3" style="${anulada ? "color:#b00;font-size:8px" : ""}">${nota}</td>
     </tr>`;
-    }).join("") : "";
+      }).join("");
 
     return `<tbody class="mov">${principal}${ramas}</tbody>`;
   }).join("");
 
-  const resumen = ["CUSTODIA", "ENTREGA", "PRESTAMO"].map(tipo => {
-    const lista = movimientos.filter(m => m.tipo === tipo);
+  let resumen = ["CUSTODIA", "ENTREGA", "PRESTAMO"].map(tipo => {
+    const lista = movimientos.filter(m => m.tipo === tipo && !m.soloAnulada);
     if (lista.length === 0) return null;
     const uds = lista.reduce((s, m) => s + m.uds, 0);
     return `${TIPOS[tipo].label.charAt(0) + TIPOS[tipo].label.slice(1).toLowerCase()}s: ${lista.length} (${uds} uds.)`;
   }).filter(Boolean).join(" · ");
+  const conAnulacion = movimientos.filter(m => m.anuladasUds > 0);
+  if (conAnulacion.length > 0) {
+    resumen += ` · Albaranes con anulación: ${conAnulacion.length} (${conAnulacion.reduce((s, m) => s + m.anuladasUds, 0)} uds. revertidas)`;
+  }
 
   const subtitulo = `Tipo: ${tipoLabel}` + (busqueda ? ` · Búsqueda: ${esc(busqueda)}` : "");
   const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
@@ -2018,16 +2074,107 @@ function printHistorialDoc(movimientos, tipoLabel, busqueda, lotesMigrados) {
   setTimeout(() => win.print(), 500);
 }
 
+// ─── MODAL EDITAR ALBARÁN / REVERTIR ENTREGA ─────────────────────────────────
+function ModalRevertirEntrega({ movimiento, onClose, onConfirm }) {
+  const mono = "var(--mono,monospace)";
+  const lineas = movimiento.lineas;
+  const [uds, setUds] = useState({});
+  const [operario, setOperario] = useState("");
+  const [motivo, setMotivo] = useState("FALTA DE STOCK REAL");
+  const [guardando, setGuardando] = useState(false);
+
+  const setLinea = (l, v) => {
+    const n = Math.max(0, Math.min(l.uds, parseInt(v, 10) || 0));
+    setUds(u => ({ ...u, [l.id]: n }));
+  };
+  const items = lineas.map(l => ({ id: l.id, uds: uds[l.id] || 0 })).filter(i => i.uds > 0);
+  const totalRevertir = items.reduce((s, i) => s + i.uds, 0);
+
+  const handleGuardar = async () => {
+    if (totalRevertir === 0) { alert("Indica las unidades a revertir en al menos un producto"); return; }
+    if (!operario.trim()) { alert("⚠️ Obligatorio rellenar quién revierte la entrega"); return; }
+    setGuardando(true);
+    await onConfirm(items, operario.trim(), motivo.trim());
+    setGuardando(false);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && !guardando && onClose()}>
+      <div className="modal" style={{ maxWidth: 680 }}>
+        <div className="modal-title">↩️ Editar albarán · Revertir entrega</div>
+        <div className="modal-sub">{movimiento.cliente} · {fmt(movimiento.fecha)}{movimiento.albaran ? " · " + movimiento.albaran : ""}</div>
+        <div className="alert alert-warn" style={{ marginBottom: 16 }}>
+          Indica cuántas unidades de cada producto <strong>no tienen stock real</strong>. Volverán a la custodia como pendientes y el albarán quedará anotado como <strong>ANULADO</strong> en el Histórico. Cuando llegue el género, haz una entrega nueva.
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
+          {lineas.map(l => (
+            <div key={l.id} style={{ display: "grid", gridTemplateColumns: "64px 1fr 70px 84px auto", gap: 10, alignItems: "center", background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 12px" }}>
+              <span style={{ fontFamily: mono, fontSize: 10, fontWeight: 700, color: colorTipo("ENTREGA").fg }}>{l.numEntrega ? "#" + l.numEntrega : ""}</span>
+              <div style={{ minWidth: 0, fontSize: 11 }}>
+                <span style={{ fontFamily: mono, fontWeight: 700, color: "var(--text)" }}>{l.referencia}</span>
+                <span style={{ fontFamily: mono, color: "var(--text-dim)" }}> · {l.producto}</span>
+                {l.almacen && <span className="tag tag-accent" style={{ marginLeft: 8 }}>{l.almacen}</span>}
+              </div>
+              <span style={{ fontFamily: mono, fontSize: 11, color: "var(--text-dim)", textAlign: "right" }}>
+                <b style={{ fontSize: 14, color: colorTipo("ENTREGA").fg }}>{l.uds}</b> uds.
+              </span>
+              <input type="number" min="0" max={l.uds} value={uds[l.id] || ""} placeholder="0"
+                onChange={e => setLinea(l, e.target.value)} title="Unidades a revertir"
+                style={{ padding: "6px 8px", textAlign: "right" }} />
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setLinea(l, l.uds)}>Todas</button>
+            </div>
+          ))}
+          <div style={{ fontFamily: mono, fontSize: 10, color: "var(--text-faint)", textAlign: "right", paddingRight: 4 }}>
+            ENTREGADAS · REVERTIR (0 = la línea se queda como está)
+          </div>
+        </div>
+
+        <div className="form-grid">
+          <div className="form-group">
+            <label>Operario que revierte *</label>
+            <input value={operario} onChange={e => setOperario(e.target.value.toUpperCase())} placeholder="Nombre del operario"
+              style={{ borderColor: !operario ? "var(--accent)" : "var(--border)" }} />
+          </div>
+          <div className="form-group">
+            <label>Motivo</label>
+            <input value={motivo} onChange={e => setMotivo(e.target.value.toUpperCase())} placeholder="Ej: FALTA DE STOCK REAL" />
+          </div>
+        </div>
+
+        <div style={{ fontFamily: mono, fontSize: 11, color: "var(--text-dim)", margin: "16px 0", background: "var(--accent-dim)", padding: "8px 12px", borderRadius: 6 }}>
+          {totalRevertir > 0
+            ? <>Se devolverán <strong style={{ color: "var(--text)" }}>{totalRevertir} ud.</strong> de {items.length} producto{items.length > 1 ? "s" : ""} al stock en custodia.</>
+            : "Aún no has indicado ninguna unidad a revertir."}
+        </div>
+        <div className="form-actions">
+          <button className="btn btn-ghost" onClick={onClose} disabled={guardando}>Cancelar</button>
+          <button className="btn btn-primary" onClick={handleGuardar} disabled={guardando || totalRevertir === 0}>
+            {guardando ? "Guardando…" : "↩️ Revertir" + (totalRevertir > 0 ? " " + totalRevertir + " ud." : "")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── HISTORIAL DE MOVIMIENTOS ────────────────────────────────────────────────
-function Historial({ data }) {
+function Historial({ data, onRevertirEntrega }) {
   const [search, setSearch] = useState("");
   const [filterTipo, setFilterTipo] = useState("TODOS");
   const [abiertos, setAbiertos] = useState({});
+  const [revertirId, setRevertirId] = useState(null);     // albarán que se está editando/revertiendo
+  const [reimprimirId, setReimprimirId] = useState(null); // albarán recién revertido (ofrecer reimpresión)
+  const esMovil = typeof window !== "undefined" && window.innerWidth < 768;
   const toggleAbierto = id => setAbiertos(a => ({ ...a, [id]: !a[id] }));
 
   // Combinar custodias (ENTRADA), entregas agrupadas (SALIDA) y préstamos
   // temporales en un solo timeline
   const gruposEntrega = agruparEntregas(data.entregas, data.custodias);
+  const gruposAnuladas = agruparEntregas(data.entregasAnuladas || [], data.custodias);
+  const anuladasPorKey = {};
+  gruposAnuladas.forEach(g => { anuladasPorKey[g.key] = g; });
+  const clavesVigentes = new Set(gruposEntrega.map(g => g.key));
   const todos = [
     ...data.custodias.map(c => ({
       id: "c-" + c.id, tipo: "CUSTODIA",
@@ -2056,6 +2203,33 @@ function Historial({ data }) {
       esMultiple: g.esMultiple,
       grupoEntregaKey: g.esMultiple ? g.key : null,
       lineas: g.lineas,
+      anuladas: anuladasPorKey[g.key]?.lineas || [],
+      anuladasUds: anuladasPorKey[g.key]?.totalUds || 0,
+      soloAnulada: false,
+      primerNumEntrega: g.primerNumEntrega || "",
+      createdAt: g.createdAt || "",
+    })),
+    // Albaranes cuyas líneas se han anulado todas: solo queda la constancia
+    ...gruposAnuladas.filter(g => !clavesVigentes.has(g.key)).map(g => ({
+      id: "ea-" + g.key,
+      tipo: "ENTREGA",
+      fecha: g.fecha,
+      cliente: g.cliente,
+      referencia: g.lineas.length > 1 ? "MÚLTIPLE" : (g.lineas[0]?.referencia || ""),
+      producto: g.lineas.length > 1
+        ? g.lineas.map(l => l.referencia + " ×" + l.uds).join("  ·  ")
+        : (g.lineas[0]?.producto || ""),
+      almacen: g.lineas.length > 1 ? "" : (g.lineas[0]?.almacen || ""),
+      uds: 0,
+      operario: g.operario,
+      albaran: (g.primerNumEntrega ? "#" + g.primerNumEntrega + (g.lineas.length > 1 ? "…" : "") + " · " : "") + "ANULADA",
+      notas: "",
+      esMultiple: g.lineas.length > 1,
+      grupoEntregaKey: null,
+      lineas: [],
+      anuladas: g.lineas,
+      anuladasUds: g.totalUds,
+      soloAnulada: true,
       primerNumEntrega: g.primerNumEntrega || "",
       createdAt: g.createdAt || "",
     })),
@@ -2095,7 +2269,7 @@ function Historial({ data }) {
   .filter(m => {
     if (!search) return true;
     const q = search.toLowerCase();
-    return `${m.cliente} ${m.referencia} ${m.producto} ${m.albaran} ${m.operario} ${m.notas}`.toLowerCase().includes(q);
+    return `${m.cliente} ${m.referencia} ${m.producto} ${m.albaran} ${m.operario} ${m.notas} ${m.anuladasUds > 0 ? "ANULADA" : ""}`.toLowerCase().includes(q);
   })
   .sort((a, b) => {
     const da = a.fecha && a.fecha.match(/^\d{4}/) ? a.fecha : "1900";
@@ -2158,7 +2332,7 @@ function Historial({ data }) {
           <div className="empty-sub">Los movimientos aparecerán aquí</div>
         </div>
       ) : movimientos.map(m => (
-        <div key={m.id} className="history-item">
+        <div key={m.id} className="history-item" style={m.soloAnulada ? { opacity: 0.6 } : undefined}>
           {/* Col 1: tipo + fecha */}
           <div>
             <div style={{
@@ -2183,7 +2357,8 @@ function Historial({ data }) {
           <div style={{ overflow: "hidden", minWidth: 0 }}>
             <div className="history-client" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {m.cliente}
-
+              {m.soloAnulada && <span className="tag tag-red" style={{ marginLeft: 8 }}>ANULADA</span>}
+              {!m.soloAnulada && m.anuladasUds > 0 && <span className="tag tag-orange" style={{ marginLeft: 8 }}>↩ {m.anuladasUds} uds. anuladas</span>}
             </div>
             <div className="history-product" style={{ whiteSpace: m.esMultiple ? "normal" : "nowrap", overflow: "hidden", textOverflow: m.esMultiple ? "unset" : "ellipsis", fontSize: m.esMultiple ? 10 : 11 }}>
               {m.esMultiple
@@ -2194,7 +2369,7 @@ function Historial({ data }) {
           </div>
           {/* Col 5: unidades */}
           <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-            <span style={{ fontFamily:"var(--mono,monospace)", fontSize:15, fontWeight:700, color: colorTipo(m.tipo).fg }}>{m.uds}</span>
+            <span style={{ fontFamily:"var(--mono,monospace)", fontSize:15, fontWeight:700, color: m.soloAnulada ? "var(--text-faint)" : colorTipo(m.tipo).fg, textDecoration: m.soloAnulada ? "line-through" : "none" }}>{m.soloAnulada ? m.anuladasUds : m.uds}</span>
             <span style={{ fontFamily:"var(--mono,monospace)", fontSize:11, color:"var(--text-dim)", marginLeft:4 }}>Uds.</span>
           </div>
           {/* Col 6: desplegar detalle (todos los movimientos) */}
@@ -2211,12 +2386,21 @@ function Historial({ data }) {
           </div>
           {/* Col 7: acciones */}
           <div className="history-actions">
-            <button className="btn btn-ghost btn-sm btn-icon" title="Previsualizar documento"
-              onClick={e => { e.stopPropagation(); reprintMovimiento(m, data, false); }}
-              style={{ padding:"4px 7px", fontSize:14 }}>👁</button>
-            <button className="btn btn-ghost btn-sm btn-icon" title="Imprimir documento"
-              onClick={e => { e.stopPropagation(); reprintMovimiento(m, data, true); }}
-              style={{ padding:"4px 7px", fontSize:14 }}>🖨️</button>
+            {m.tipo === "ENTREGA" && m.lineas.length > 0 && !esMovil && onRevertirEntrega && (
+              <button className="btn btn-ghost btn-sm btn-icon" title="Editar albarán / revertir entrega (sin stock real)"
+                onClick={e => { e.stopPropagation(); setRevertirId(m.id); }}
+                style={{ padding:"4px 7px", fontSize:14 }}>✏️</button>
+            )}
+            {!m.soloAnulada && (
+              <>
+                <button className="btn btn-ghost btn-sm btn-icon" title="Previsualizar documento"
+                  onClick={e => { e.stopPropagation(); reprintMovimiento(m, data, false); }}
+                  style={{ padding:"4px 7px", fontSize:14 }}>👁</button>
+                <button className="btn btn-ghost btn-sm btn-icon" title="Imprimir documento"
+                  onClick={e => { e.stopPropagation(); reprintMovimiento(m, data, true); }}
+                  style={{ padding:"4px 7px", fontSize:14 }}>🖨️</button>
+              </>
+            )}
           </div>
           {/* Detalle desplegado */}
           {abiertos[m.id] && (
@@ -2227,6 +2411,42 @@ function Historial({ data }) {
         </div>
       ))}
       </div>{/* end scroll body */}
+
+      {revertirId && todos.find(m => m.id === revertirId) && (
+        <ModalRevertirEntrega
+          movimiento={todos.find(m => m.id === revertirId)}
+          onClose={() => setRevertirId(null)}
+          onConfirm={async (items, operario, motivo) => {
+            const ok = await onRevertirEntrega(items, operario, motivo);
+            if (ok) { setReimprimirId(revertirId); setRevertirId(null); }
+          }}
+        />
+      )}
+      {reimprimirId && (() => {
+        const movCorregido = todos.find(m => m.id === reimprimirId); // sigue con líneas entregadas
+        return (
+          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setReimprimirId(null)}>
+            <div className="modal" style={{ maxWidth: 460 }}>
+              <div style={{ textAlign: "center", marginBottom: 16 }}>
+                <div style={{ fontSize: 40, marginBottom: 10 }}>↩️</div>
+                <div className="modal-title" style={{ fontSize: 16 }}>Entrega revertida</div>
+              </div>
+              <div style={{ fontFamily: "var(--mono,monospace)", fontSize: 12, color: "var(--text)", background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 8, padding: "14px 16px", marginBottom: 20 }}>
+                Las unidades han vuelto a la custodia como pendientes y el Histórico deja constancia de la anulación.
+                {movCorregido
+                  ? <div style={{ marginTop: 10, color: "var(--text-dim)" }}>Queda{movCorregido.lineas.length > 1 ? "n" : ""} {movCorregido.lineas.length} producto{movCorregido.lineas.length > 1 ? "s" : ""} entregado{movCorregido.lineas.length > 1 ? "s" : ""} en este albarán. ¿Quieres imprimir el albarán corregido?</div>
+                  : <div style={{ marginTop: 10, color: "var(--text-dim)" }}>El albarán ha quedado anulado por completo: no queda nada que imprimir.</div>}
+              </div>
+              <div className="form-actions" style={{ justifyContent: "center", gap: 16 }}>
+                <button className="btn btn-ghost" style={{ minWidth: 120 }} onClick={() => setReimprimirId(null)}>Cerrar</button>
+                {movCorregido && (
+                  <button className="btn btn-primary" onClick={() => { reprintMovimiento(movCorregido, data, true); setReimprimirId(null); }}>🖨️ Imprimir albarán corregido</button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -2817,6 +3037,7 @@ function PanelConfig({ fontSize, onFontSize, onClose, data, onChangePassword }) 
       exportadoEl: new Date().toISOString(),
       custodias: data.custodias,
       entregas: data.entregas,
+      entregasAnuladas: data.entregasAnuladas || [],
       prestamos: data.prestamos,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -2858,6 +3079,15 @@ function PanelConfig({ fontSize, onFontSize, onClose, data, onChangePassword }) 
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v8.9.0", d:"Noviembre 2026", items:[
+    "Histórico: nuevo botón ✏️ en cada entrega para editar el albarán y revertirlo cuando algún producto no tenía stock real. Se elige, por línea, cuántas unidades revertir (todas o una parte)",
+    "Las unidades revertidas vuelven a la custodia como pendientes (Panel de Control, Productos y tarjetas se actualizan) y la entrega no cuenta como realizada",
+    "El Histórico conserva la constancia: las líneas revertidas salen tachadas con la etiqueta ANULADA, el motivo, quién las revirtió y cuándo; el albarán muestra '↩ N uds. anuladas'. Si se anula el albarán entero, aparece como ENTREGA ANULADA",
+    "Tras revertir, la app ofrece imprimir el albarán corregido solo con las líneas que sí se entregaron",
+    "El Histórico impreso también muestra las líneas anuladas (tachadas, al final de cada albarán) y el resumen indica los albaranes con anulación",
+    "El número de entrega de un albarán anulado no se reutiliza. La copia de seguridad (JSON) incluye las entregas anuladas",
+    "El botón ✏️ solo está disponible en ordenador, igual que eliminar una entrega",
+  ]},
   { v:"v8.8.2", d:"Noviembre 2026", items:[
     "Panel de Control: el subtítulo de las tarjetas Lubricantes y Químicos queda en minúscula ('litros en custodia'), igual que el resto de subtítulos de las tarjetas",
   ]},
@@ -3102,6 +3332,9 @@ const MANUAL_SECTIONS = [
     "Timeline de todos los movimientos: custodias en verde, entregas en rojo, préstamos temporales en naranja.",
     "Filtros: botones 'Todos / Custodias / Entregas / Préstamos' arriba, de selección única.",
     "Orden: del más reciente al más antiguo.",
+    "✏️ Editar albarán / Revertir entrega (solo en ordenador): si lanzaste un albarán y algún producto no tenía stock real, abre la entrega, indica por línea cuántas unidades revertir (botón 'Todas' para la línea entera), escribe quién lo hace y pulsa Revertir. Las unidades vuelven a la custodia como pendientes; cuando llegue el género, haz una entrega nueva.",
+    "Constancia de la anulación: las líneas revertidas siguen en el Histórico tachadas, con la etiqueta ANULADA, el motivo, quién y cuándo. Si se revierte todo el albarán, aparece como ENTREGA ANULADA (sin botones de imprimir).",
+    "Tras revertir, la app ofrece imprimir el albarán corregido con las líneas que sí se entregaron.",
     "👁 Previsualizar / 🖨️ Reimprimir el documento original de cada fila, incluidos los préstamos.",
     "Desplegar un movimiento: el botón de flecha a la derecha de las unidades (en cualquier movimiento) abre su detalle. Entrega: cada producto entregado con su nº de entrega y unidades. Custodia: una línea con albarán, referencia, producto, almacén y unidades. Préstamo: custodia de origen, destinatario, estado y motivo. Pulsa de nuevo para cerrarlo.",
     "Imprimir histórico: el botón 🖨️ Imprimir de arriba a la derecha imprime el listado completo, movimiento a movimiento, tal como lo ves (según el botón de tipo y el buscador). Las entregas salen desplegadas en árbol, con una rama por producto. Para el histórico de un cliente, escribe su nombre en el buscador y pulsa Imprimir.",
@@ -3179,7 +3412,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v8.8.2</div>
+                <div className="about-version">v8.9.0</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
@@ -3232,6 +3465,9 @@ function agruparEntregas(entregas, custodias) {
       uds: e.uds,
       numEntrega: e.numEntrega || "",
       id: e.id,
+      anuladaAt: e.anuladaAt || "",
+      anuladaPor: e.anuladaPor || "",
+      motivo: e.motivoAnulacion || "",
     });
     grupos[key].totalUds += e.uds;
     grupos[key].entregaIds.push(e.id);
@@ -3581,7 +3817,7 @@ function MainApp({ onLogout, userEmail }) {
     savingRef.current = true;
     setSaveStatus("saving");
     try {
-      await fn();
+      return await fn();
     } catch (e) {
       console.error(e);
       alert(errorMsg);
@@ -3602,7 +3838,7 @@ function MainApp({ onLogout, userEmail }) {
   }, "No se pudo guardar la custodia. Comprueba tu conexión e inténtalo de nuevo.");
 
   const handleEntrega = (entregaData) => persistGuard(async () => {
-    const numE = formatNumE(getNextNumEntrega(data.entregas));
+    const numE = formatNumE(getNextNumEntrega([...data.entregas, ...(data.entregasAnuladas || [])]));
     const entregaConNum = { ...entregaData, numEntrega: numE };
     const custodia = data.custodias.find(c => c.id === entregaData.custodiaId);
     const nuevasUds = custodia.udsEntregadas + entregaData.uds;
@@ -3618,7 +3854,7 @@ function MainApp({ onLogout, userEmail }) {
   }, "No se pudo registrar la entrega. Comprueba tu conexión e inténtalo de nuevo.");
 
   const handleNuevaEntrega = (nuevasEntregas) => persistGuard(async () => {
-    let nextNum = getNextNumEntrega(data.entregas);
+    let nextNum = getNextNumEntrega([...data.entregas, ...(data.entregasAnuladas || [])]);
     const grupoId = uid(); // ID compartido para identificar la entrega múltiple
     const numeradas = nuevasEntregas.map(e => ({ ...e, numEntrega: formatNumE(nextNum++), grupoEntrega: grupoId }));
     const rows = await dbInsert('entregas', numeradas.map(e => toRow(e, ENTREGA_FIELDS)));
@@ -3735,6 +3971,52 @@ function MainApp({ onLogout, userEmail }) {
     setDeleteEntregaTarget(null);
   }, "No se pudo eliminar la entrega. Inténtalo de nuevo.");
 
+  // Revierte (total o parcialmente) líneas de un albarán de entrega: devuelve las
+  // unidades a la custodia y deja constancia de la parte anulada en el Histórico.
+  // items: [{ id (de la entrega), uds (a revertir) }]
+  const handleRevertirEntrega = (items, operario, motivo) => persistGuard(async () => {
+    const marca = { anulada: true, anuladaAt: new Date().toISOString(), anuladaPor: operario, motivoAnulacion: motivo };
+    const completas = [];          // entregas anuladas por completo
+    const quedan = {};             // entrega parcial → unidades que siguen entregadas
+    const nuevasAnuladas = [];
+    const devueltoPorCustodia = {};
+    for (const it of items) {
+      const entrega = data.entregas.find(e => e.id === it.id);
+      if (!entrega || !(it.uds > 0)) continue;
+      const uds = Math.min(it.uds, entrega.uds);
+      if (uds === entrega.uds) {
+        const [row] = await dbUpdate('entregas', entrega.id, toRow(marca, ENTREGA_FIELDS));
+        completas.push(entrega.id);
+        nuevasAnuladas.push(fromRow(row, ENTREGA_FIELDS));
+      } else {
+        // Primero se añade la parte anulada y después se reduce la línea vigente
+        const [row] = await dbInsert('entregas', [toRow({
+          ...entrega, id: uid(), uds, createdAt: undefined,
+          grupoEntrega: entrega.grupoEntrega || entrega.id, ...marca,
+        }, ENTREGA_FIELDS)]);
+        await dbUpdate('entregas', entrega.id, toRow({ uds: entrega.uds - uds }, ENTREGA_FIELDS));
+        quedan[entrega.id] = entrega.uds - uds;
+        nuevasAnuladas.push(fromRow(row, ENTREGA_FIELDS));
+      }
+      devueltoPorCustodia[entrega.custodiaId] = (devueltoPorCustodia[entrega.custodiaId] || 0) + uds;
+    }
+    const custodiasNuevas = {};
+    await Promise.all(Object.entries(devueltoPorCustodia).map(async ([custodiaId, devuelto]) => {
+      const c = data.custodias.find(x => x.id === custodiaId);
+      if (!c) return;
+      const nuevasUds = Math.max(0, c.udsEntregadas - devuelto);
+      await dbUpdate('custodias', custodiaId, toRow({ udsEntregadas: nuevasUds }, CUSTODIA_FIELDS));
+      custodiasNuevas[custodiaId] = nuevasUds;
+    }));
+    setData(d => ({
+      ...d,
+      entregas: d.entregas.filter(e => !completas.includes(e.id)).map(e => e.id in quedan ? { ...e, uds: quedan[e.id] } : e),
+      entregasAnuladas: [...(d.entregasAnuladas || []), ...nuevasAnuladas],
+      custodias: d.custodias.map(c => c.id in custodiasNuevas ? { ...c, udsEntregadas: custodiasNuevas[c.id] } : c),
+    }));
+    return true;
+  }, "No se pudo revertir la entrega. Inténtalo de nuevo.");
+
   const activasCnt = data ? data.custodias.filter(c => c.udsTotales - c.udsEntregadas > 0).length : 0;
   const deudasCnt = data ? (data.prestamos || []).filter(p => !p.saldado).length : 0;
 
@@ -3773,7 +4055,7 @@ function MainApp({ onLogout, userEmail }) {
         <div className="sidebar-footer">
           <div className="krafted">Diseñado por <span>Yakoba Moreno</span></div>
           <div className="krafted" style={{ marginTop: 6 }}>Desarrollado en <span>Claude Code</span></div>
-          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.8.2</span></div>
+          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.9.0</span></div>
         </div>
       </aside>
 
@@ -3827,7 +4109,7 @@ function MainApp({ onLogout, userEmail }) {
         {tab === "custodias" && <div className="tab-scroll"><TabCustodias data={data} /></div>}
         {tab === "entregas"  && <div className="tab-scroll"><TabEntregas data={data} /></div>}
         {tab === "productos" && <div style={{ flex:1, overflow:"hidden", display:"flex", flexDirection:"column" }}><TabProductos data={data} onBulkUpdateRef={handleBulkUpdateRef} /></div>}
-        {tab === "historial" && <div style={{ flex:1, overflow:"hidden", display:"flex", flexDirection:"column" }}><Historial data={data} /></div>}
+        {tab === "historial" && <div style={{ flex:1, overflow:"hidden", display:"flex", flexDirection:"column" }}><Historial data={data} onRevertirEntrega={handleRevertirEntrega} /></div>}
         </div>{/* end main-inner */}
       </main>
       </div>{/* end app-main */}
