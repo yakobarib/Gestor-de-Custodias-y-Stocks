@@ -2265,7 +2265,7 @@ function Historial({ data, onRevertirEntrega }) {
   const lotesMigrados = new Set(Object.keys(conteoCreatedAt).filter(k => conteoCreatedAt[k] >= 3));
 
   const movimientos = todos
-  .filter(m => filterTipo === "TODOS" || m.tipo === filterTipo)
+  .filter(m => filterTipo === "TODOS" || (filterTipo === "ANULADA" ? m.anuladasUds > 0 : m.tipo === filterTipo))
   .filter(m => {
     if (!search) return true;
     const q = search.toLowerCase();
@@ -2293,6 +2293,7 @@ function Historial({ data, onRevertirEntrega }) {
     ["TODOS", "Todos"],
     ["CUSTODIA", "Custodias"],
     ["ENTREGA", "Entregas"],
+    ["ANULADA", "Anuladas"],
     ["PRESTAMO", "Préstamos"],
   ];
 
@@ -3079,6 +3080,9 @@ function PanelConfig({ fontSize, onFontSize, onClose, data, onChangePassword }) 
 
 // ─── PANEL AYUDA ─────────────────────────────────────────────────────────────
 const CHANGELOG = [
+  { v:"v8.9.1", d:"Noviembre 2026", items:[
+    "Histórico: nuevo botón de filtro 'Anuladas', entre Entregas y Préstamos, que muestra los albaranes con alguna línea revertida (total o parcialmente). El botón 🖨️ Imprimir respeta este filtro",
+  ]},
   { v:"v8.9.0", d:"Noviembre 2026", items:[
     "Histórico: nuevo botón ✏️ en cada entrega para editar el albarán y revertirlo cuando algún producto no tenía stock real. Se elige, por línea, cuántas unidades revertir (todas o una parte)",
     "Las unidades revertidas vuelven a la custodia como pendientes (Panel de Control, Productos y tarjetas se actualizan) y la entrega no cuenta como realizada",
@@ -3330,7 +3334,7 @@ const MANUAL_SECTIONS = [
   ]},
   { t:"Histórico", b:[
     "Timeline de todos los movimientos: custodias en verde, entregas en rojo, préstamos temporales en naranja.",
-    "Filtros: botones 'Todos / Custodias / Entregas / Préstamos' arriba, de selección única.",
+    "Filtros: botones 'Todos / Custodias / Entregas / Anuladas / Préstamos' arriba, de selección única. 'Anuladas' muestra los albaranes que tienen alguna línea revertida (total o parcialmente) y se puede imprimir igual que el resto.",
     "Orden: del más reciente al más antiguo.",
     "✏️ Editar albarán / Revertir entrega (solo en ordenador): si lanzaste un albarán y algún producto no tenía stock real, abre la entrega, indica por línea cuántas unidades revertir (botón 'Todas' para la línea entera), escribe quién lo hace y pulsa Revertir. Las unidades vuelven a la custodia como pendientes; cuando llegue el género, haz una entrega nueva.",
     "Constancia de la anulación: las líneas revertidas siguen en el Histórico tachadas, con la etiqueta ANULADA, el motivo, quién y cuándo. Si se revierte todo el albarán, aparece como ENTREGA ANULADA (sin botones de imprimir).",
@@ -3412,7 +3416,7 @@ function PanelAyuda({ onClose }) {
                 <LogoAD size={60} color="var(--accent)" />
               </div>
               <div style={{textAlign:'center'}}>
-                <div className="about-version">v8.9.0</div>
+                <div className="about-version">v8.9.1</div>
                 <div className="about-line">Gestor de Stocks y Custodias</div>
                 <div className="about-line">Recambios Ibiza S.A. · AD Parts Distribución</div>
               </div>
@@ -4055,7 +4059,7 @@ function MainApp({ onLogout, userEmail }) {
         <div className="sidebar-footer">
           <div className="krafted">Diseñado por <span>Yakoba Moreno</span></div>
           <div className="krafted" style={{ marginTop: 6 }}>Desarrollado en <span>Claude Code</span></div>
-          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.9.0</span></div>
+          <div style={{ marginTop: 10 }}><span className="version-badge">v.8.9.1</span></div>
         </div>
       </aside>
 
